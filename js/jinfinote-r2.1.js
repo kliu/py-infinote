@@ -812,13 +812,19 @@ function _indexOf(array, searchElement, fromIndex)
  * the form "1:2;3:4;5:6".
  */
 function Vector(value) {
+    console.log(typeof(value));
 	if(typeof(value) == "object")
 	{
 		for(var user in value) {
-			if(user.match(Vector.user_regex) && value[user] > 0)
+			if(user.match(Vector.user_regex) && value[user] > 0) {
+                console.log('set thisuser to ' + value[user]);
 				this[user] = value[user];
+                console.log(user);
+                console.log(this[user]);
+            }
 		}
 	} else if (typeof(value) == "string") {
+        console.log("WEFWEFEWF");
 		var match = Vector.timestring_regex.exec(value);
 		while (match != null) {
 			this[match[1]] = parseInt(match[2]);
@@ -843,8 +849,11 @@ Vector.timestring_regex = /(\d+):(\d+)/g;
  *  False otherwise.
  */
 Vector.prototype.eachUser = function(callback) {
-	for(var user in this) {
+	for(var user in this) {        
 		if(user.match(Vector.user_regex)) {
+            console.log(user);
+            console.log(this[user]);
+            console.log(callback(parseInt(user), this[user]));
 			if(callback(parseInt(user), this[user]) == false)
 				return false;
 		}
@@ -875,6 +884,7 @@ Vector.prototype.toHTML = Vector.prototype.toString;
  *  @param {Vector} other
  */ 
 Vector.prototype.add = function(other) {
+    console.log('errr');
 	var result = new Vector(this);
 	
 	other.eachUser(function(u, v) {
@@ -886,6 +896,7 @@ Vector.prototype.add = function(other) {
 
 /** Returns a copy of this vector. */
 Vector.prototype.copy = function() {
+    console.log('errr');
 	return new Vector(this);
 };
 
@@ -893,6 +904,7 @@ Vector.prototype.copy = function() {
  *  @param {Number} user Index of the component to be returned
  */
 Vector.prototype.get = function(user) {
+    console.log('GETT');
 	if(this[user] != undefined)
 		return this[user];
 	else
@@ -937,6 +949,7 @@ Vector.prototype.equals = function(other) {
  *  @type Vector
  */
 Vector.prototype.incr = function(user, by) {
+    console.log('errr');
 	var result = new Vector(this);
 	
 	if(by == undefined)
@@ -979,7 +992,6 @@ function State(buffer, vector) {
 		this.buffer = buffer.copy();
 	else
 		this.buffer = new Buffer();
-	
 	this.vector = new Vector(vector);
 	this.request_queue = new Array();
 	this.log = new Array();
@@ -992,6 +1004,7 @@ function State(buffer, vector) {
  *  @param {Boolean} [nocache] Set to true to bypass the translation cache.
  */
 State.prototype.translate = function(request, targetVector, noCache) {	
+    console.log('translate');
 	if(request instanceof DoRequest && request.vector.equals(targetVector)) {
 		// If the request vector is not an undo/redo request and is already
 		// at the desired state, simply return the original request since

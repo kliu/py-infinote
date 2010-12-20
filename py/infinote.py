@@ -31,10 +31,19 @@ import sys
 import re
 
 class Operations(object):
-    pass
+    users = {}
+    
+    @classmethod
+    def set_user(self,value):
+        if value not in self.users:
+            self.users[str(value)] = value
+    
+    @classmethod
+    def get_users(self):
+        return self.users
 
 
-class NoOp(Operations):
+class NoOp(object):
     '''Instantiates a new NoOp operation object.
     @class An operation that does nothing.
     '''
@@ -68,7 +77,7 @@ class NoOp(Operations):
         return NoOp()
         
 
-class Insert(Operations):
+class Insert(object):
     '''Instantiates a new Insert operation object.
     @class An operation that inserts a Buffer at a certain offset.
     @param {Number} position The offset at which the text is to be inserted.
@@ -168,7 +177,7 @@ class Insert(Operations):
         return Delete(self.position, self.text.copy())
 
 
-class Delete(Operations):
+class Delete(object):
     '''Instantiates a new Delete operation object.
     Delete operations can be reversible or not, depending on how they are
     constructed. Delete operations constructed with a Buffer object know which
@@ -416,7 +425,7 @@ class Delete(Operations):
             return Insert(self.position, self.what.copy())
 
 
-class Split(Operations):
+class Split(object):
     '''Instantiates a new Split operation object.
     @class An operation which wraps two different operations into a single
     object. This is necessary for example in order to transform a Delete operation 
@@ -543,6 +552,7 @@ class DoRequest(object):
     '''
     def __init__(self, user, vector, operation):
         self.user = user
+        Operations.set_user(user)
         self.vector = vector
         self.operation = operation
         
@@ -632,6 +642,7 @@ class UndoRequest(object):
     '''
     def __init__(self, user, vector):
         self.user = user
+        Operations.set_user(user)
         self.vector = vector
 
 
@@ -676,6 +687,7 @@ class RedoRequest(object):
     '''
     def __init__(self, user, vector):
         self.user = user
+        Operations.set_user(user)
         self.vector = vector        
 
     def toString(self):        
@@ -711,25 +723,40 @@ class Vector(object):
     @param [value] Pre-initialize the vector with existing values. This can be
     a Vector object, a generic Object with numeric properties, or a string of the form "1:2;3:4;5:6".
     '''
-    user_regex = u'/\d+/'
+    user_regex = r'^\d+$'
     timestring_regex = u'/(\d+):(\d+)/g'
-    users = []
     
     def __init__(self, value = None):
-        #check if value is a vector object
-        if type(value).__name__ == "object":
+        
+        print 'value:%s' % value
+        if type(value).__name__ != 'NoneType':
+            print 'value: ' % value
             for user in value:
-                if re.match(user, Vector.user_regex) and value[user] > 0:
-                    self.user = value[user]
+                pass
+
+                
+        #if str(user) not in Operations.get_users() and user != None:
+        #    Operations.set_user(str(user))
+            #self.users[str(user)] = str(user)
+        #if isinstance(value, Vector):
+        #    print "WOOOOOOOOOOHOOOOOOOOOOOOO"
+        #if type(value).__name__ == "object":
+        #    print 'blaaaaa'
+        #    for user in value:
+        #        print 'foojjjjjjjj' +user
+        #        if re.match(user, Vector.user_regex) and value[user] > 0:
+        #            self.user = value[user]
                     
-        elif isinstance(value, str):
-            #exec => match
-            match = re.match(value, self.timestring_regex)
-            #match = self.timestring_regex.match(value)
-            while match != None:
-                self.users[match.group(1)] = int(match.group(2))
-                #exec => match
-                match = Vector.timestring_regex.match(value)
+        #elif isinstance(value, str):
+        #    print 'baabababab'
+        #    #exec => match
+        #    match = re.match(value, self.timestring_regex)
+        #    print match.group(1)
+        #    #match = self.timestring_regex.match(value)
+        #    while match != None:
+        #        Operations.get_users()[match.group(1)] = int(match.group(2))
+        #        #exec => match
+        #        match = Vector.timestring_regex.match(value)
                 
 
     def eachUser(self, callback):
@@ -740,11 +767,9 @@ class Vector(object):
         @type Boolean
         @returns True if the callback function has never returned false; returns False otherwise.
         '''
-        for user in self.users:
-            print 'bla'
-            print user
-            if user.match(Vector.user_regex):
-                if callback(int(user), self[user]) == False:
+        for user in Operations.get_users():
+            if user.isdigit():
+                if callback(int(user), Operations.get_users()[user]) == False:
                     return False   
 
 
@@ -754,10 +779,8 @@ class Vector(object):
         '''
         components = []
         def Func(u, v):
-            print "Foo"            
-            print u
             if(v > 0):
-                components.append(u+":"+v)    
+                components.append("%s:%s" % (u,v))    
         self.eachUser(Func)
         components.sort()   
         return ';'.join(components)
@@ -769,6 +792,7 @@ class Vector(object):
         '''Returns the sum of two vectors.
         @param {Vector} other
         '''
+        print "ADDING ERRR"
         def Func(u, v):
             result[u] = result.get(u) + v
         result = Vector(self)    
@@ -785,8 +809,8 @@ class Vector(object):
         '''Returns a specific component of this vector, or 0 if it is not defined.
         @param {Number} user Index of the component to be returned
         '''
-        if self.user != None:
-            return self.user
+        if Operations.get_users() != None:
+            return Operations.get_users()
         else:
             return 0
 
@@ -798,6 +822,7 @@ class Vector(object):
         @type Boolean
         '''
         def Func(u, v):
+            print v <= other.get(u)
             return v <= other.get(u)
         return self.eachUser(Func)
 
@@ -862,13 +887,14 @@ class State(object):
         if isinstance(buffer, Buffer):
             self.buffer = buffer.copy()
         else:
-            self.buffer = Buffer()    
+            self.buffer = Buffer() 
         self.vector = Vector(vector)
         self.request_queue = []
         self.log = []
         self.cache = {}
         
     def translate(self, request, targetVector, noCache):
+        print 'translate'
         '''Translates a request to the given state vector.
         @param {Request} request The request to translate
         @param {Vector} targetVector The target state vector
@@ -1013,7 +1039,6 @@ class State(object):
             for index, value in enumerate(self.request_queue):
                 request = self.request_queue[index]
                 if self.canExecute(request):
-                    print 'bla'
                     self.request_queue.splice(index, 1)
                     break
 
@@ -1106,6 +1131,7 @@ class Segment(object):
     '''
     def __init__(self, user, text):
         self.user = user
+        Operations.set_user(user)
         self.text = text
         
 
@@ -1303,3 +1329,6 @@ class Buffer(object):
                 self.segments.splice(spliceInsertOffset + insertIndex, 0, insert.segments[insertIndex].copy())        
         #Clean up since the splice operation might have fragmented some segments.
         self.compact()
+        
+    def __repr__(self):
+        return self.toString()

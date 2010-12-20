@@ -1,1 +1,48 @@
-<
+<!DOCTYPE html>
+<html>
+<head>
+<title>JInfinote tests</title>
+<meta  charset="utf-8">
+<meta http-equiv="content-script-type" content="text/javascript">
+<script type='text/javascript' src='diff_match_patch.js'></script>
+<script type='text/javascript' src='jinfinote-r2.1.js'></script>
+<script type='text/javascript'>
+var initial_segment = new Segment(0, "abcdefghi");
+var initial_buffer = new Buffer([initial_segment]);
+document.write(initial_buffer + "\n"); // this outputs "abcdefghi"
+var state = new State(initial_buffer);
+var r1_segment = new Segment(2, "ac"); // 2 is the segment author, "ac" is the data
+console.log('segment: '+r1_segment.toString());
+
+var r1_buffer = new Buffer([r1_segment]);
+console.log('buffer: '+r1_buffer.toString());
+
+var r1_operation = new Operations.Insert(2, r1_buffer); // 2 is the insert offset
+console.log('operation: '+r1_operation.toString());
+
+var r1_vector = new Vector();
+console.log('vector: '+r1_vector.toString());
+
+var r1 = new DoRequest(2, r1_vector, r1_operation);
+console.log('dorequest: '+state.execute(r1).toString());
+
+//document.write(state.buffer + "\n"); // this outputs "abaccdefghi"
+document.write(state.vector.toString() + "\n"); // this outputs 2:1
+///var r2_segment = new Segment(3, "bc");
+//var r2_buffer = new Buffer([r2_segment]);
+//var r2_operation = new Operations.Insert(3, r2_buffer);
+//var r2_vector = new Vector();
+//var r2 = new DoRequest(3, r2_vector, r2_operation);
+//var executed_r2 = state.execute(r2);
+//document.write(executed_r2 + "\n"); // this outputs DoRequest(3, 2:1, Insert(5, bc))
+//document.write(state.buffer.toString() + "\n"); // outputs "abaccbcdefghi"
+//var r3_operation = new Operations.Delete(0, 5);
+//var r3_vector = new Vector(); // again this request was issued in the beginning
+//var r3 = new DoRequest(4, r3_vector, r3_operation);
+//var executed_r3 = state.execute(r3);
+//document.write(executed_r3 + "\n"); // this outputs DoRequest(4, 2:1;3:1, Split(Split(Delete(0, 2), Delete(4, 1)), Delete(7, 2)))
+//document.write(state.buffer + "\n"); // this outputs "acbcfghi"
+
+</script>
+</head>
+</html>
