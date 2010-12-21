@@ -99,6 +99,7 @@ class Insert(object):
         
 
     def apply(self, buffer):
+        print 'insert.apply'
         '''Applies the insert operation to the given Buffer.
         @param {Buffer} buffer The buffer in which the insert operation is to be performed.
         '''
@@ -106,6 +107,7 @@ class Insert(object):
         
     
     def cid(self, other):
+        print 'insert.cid'
         '''Computes the concurrency ID against another Insert operation.
         @param {Operations.Insert} other
         @returns The operation that is to be transformed.
@@ -118,6 +120,7 @@ class Insert(object):
             
 
     def getLength(self):
+        print 'insert.getlength'
         '''Returns the total length of data to be inserted by this insert operation,
         in characters.
         @type Number
@@ -126,6 +129,7 @@ class Insert(object):
         
         
     def transform(self, other, cid):
+        print 'insert.transform'
         '''Transforms this Insert operation against another operation, returning the
         resulting operation as a new object.
         @param {Operation} other The operation to transform against.
@@ -449,6 +453,7 @@ class Split(object):
 
 
     def apply(self, buffer):
+        print 'split.apply'
         '''Applies the two components of this split operation to the given buffer
         sequentially. The second component is implicitly transformed against the 
         first one in order to do so.
@@ -464,6 +469,7 @@ class Split(object):
     
     
     def transform(self, other, cid):
+        print 'split.transform'
         '''Transforms this Split operation against another operation. This is done
         by transforming both components individually.
         @param {Operation} other
@@ -478,7 +484,8 @@ class Split(object):
             return Split(self.first.transform(other),self.second.transform(other))
 
 
-    def mirror(self):        
+    def mirror(self):   
+        print 'split.mirror'
         '''Mirrors this Split operation. This is done by transforming the second
         component against the first one, then mirroring both components individually.
         @type Operations.Split
@@ -566,10 +573,12 @@ class DoRequest(object):
         
 
     def copy(self):
+        print 'dorequest.copy'
         return DoRequest(self.user, self.vector, self.operation)
         
 
     def execute(self, state):
+        print 'dorequest.execute'
         '''Applies the request to a State.
         @param {State} state The state to which the request should be applied.
         '''
@@ -579,6 +588,7 @@ class DoRequest(object):
         
 
     def transform(self, other, cid):
+        print 'dorequest.transform'
         '''Transforms this request against another request.
         @param {DoRequest} other
         @param {DoRequest} [cid] The concurrency ID of the two requests. This is
@@ -597,7 +607,8 @@ class DoRequest(object):
         return DoRequest(self.user, self.vector.incr(other.user), newOperation)
 
 
-    def mirror(self, amount):        
+    def mirror(self, amount):   
+        print 'dorequest.mirror'
         '''Mirrors the request. This inverts the operation and increases the issuer's
         component of the request time by the given amount.
         @param {Number} [amount] The amount by which the request time is
@@ -610,6 +621,7 @@ class DoRequest(object):
 
 
     def fold(self, user, amount):
+        print 'dorequest.fold'
         '''Folds the request along another user's axis. This increases that user's
         component by the given amount, which must be a multiple of 2.
         @type DoRequest
@@ -620,6 +632,7 @@ class DoRequest(object):
 
 
     def makeReversible(self, translated, state):
+        print 'dorequest.makereversible'
         '''Makes a request reversible, given a translated version of this request
         and a State object. This only applies to requests carrying a Delete
         operation; for all others, this does nothing.
@@ -728,9 +741,7 @@ class Vector(object):
     
     def __init__(self, value = None):
         
-        print 'value:%s' % value
         if type(value).__name__ != 'NoneType':
-            print 'value: ' % value
             for user in value:
                 pass
 
@@ -760,6 +771,7 @@ class Vector(object):
                 
 
     def eachUser(self, callback):
+        print 'vector.eachuser'
         '''Helper function to easily iterate over all users in this vector.
         @param {function} callback Callback function which is called with the user
         and the value of each component. If this callback function returns false,
@@ -789,10 +801,10 @@ class Vector(object):
         return self.toString()        
         
     def add(self, other):
+        print 'vector.add'
         '''Returns the sum of two vectors.
         @param {Vector} other
         '''
-        print "ADDING ERRR"
         def Func(u, v):
             result[u] = result.get(u) + v
         result = Vector(self)    
@@ -801,11 +813,13 @@ class Vector(object):
         return result;
 
     def copy(self): 
+        print 'vector.copy'
         '''Returns a copy of this vector.'''
         return Vector(self)
 
 
     def get(self, user):
+        print 'vector.get'
         '''Returns a specific component of this vector, or 0 if it is not defined.
         @param {Number} user Index of the component to be returned
         '''
@@ -815,6 +829,7 @@ class Vector(object):
             return 0
 
     def causallyBefore(self, other):
+        print 'vector.causallybefore'
         '''Calculates whether this vector is smaller than or equal to another vector.
         This means that all components of this vector are less than or equal to
         their corresponding components in the other vector.
@@ -822,12 +837,12 @@ class Vector(object):
         @type Boolean
         '''
         def Func(u, v):
-            print v <= other.get(u)
             return v <= other.get(u)
         return self.eachUser(Func)
 
 
     def equals(self, other):
+        print 'vector.equals'
         '''Determines whether this vector is equal to another vector. This is true if
         all components of this vector are present in the other vector and match
         their values, and vice-versa.
@@ -845,6 +860,7 @@ class Vector(object):
 
 
     def incr(self, user, by):
+        print 'vector.incr'
         '''Returns a new vector with a specific component increased by a given
         amount.
         @param {Number} user Component to increase
@@ -858,6 +874,7 @@ class Vector(object):
         return result;
 
     def leastCommonSuccessor(self, v1, v2):
+        print 'vector.leastcommonsuccessor'
         '''Calculates the least common successor of two vectors.
         @param {Vector} v1
         @param {Vector} v2
@@ -894,7 +911,7 @@ class State(object):
         self.cache = {}
         
     def translate(self, request, targetVector, noCache):
-        print 'translate'
+        print 'state.translate'
         '''Translates a request to the given state vector.
         @param {Request} request The request to translate
         @param {Vector} targetVector The target state vector
@@ -1008,6 +1025,7 @@ class State(object):
 
 
     def queue(self, request):
+        print 'state.queue'
         '''Adds a request to the request queue.
         @param {Request} request The request to be queued.
         '''
@@ -1015,6 +1033,7 @@ class State(object):
         
 
     def canExecute(self, request = None): 
+        print 'state.canexecute'
         '''Checks whether a given request can be executed in the current state.
         @type Boolean
         '''
@@ -1026,7 +1045,8 @@ class State(object):
             return request.vector.causallyBefore(self.vector)
             
 
-    def execute(self, request = None):        
+    def execute(self, request = None):     
+        print 'state.execute'
         '''Executes a request that is executable.
         @param {Request} [request] The request to be executed. If omitted, an
         executable request is picked from the request queue instead.
@@ -1077,12 +1097,14 @@ class State(object):
 
     
     def executeAll(self):
+        print 'state.executeall'
         '''Executes all queued requests that are ready for execution.'''    
         while executed:
             executed = self.execute()
             
     
     def reachable(self, vector):
+        print 'state.reachable'
         '''Determines whether a given state is reachable by translation.
         @param {Vector} vector
         @type Boolean
@@ -1094,6 +1116,7 @@ class State(object):
 
 
     def reachableUser(self, vector, user):
+        print 'state.reachableuser'
         n = vector.get(user)    
         while True:
             if n == 0:
@@ -1111,6 +1134,7 @@ class State(object):
 
 
     def requestByUser(self, user, getIndex):
+        print 'state.requestbyuser'
         '''Retrieve an user's request by its index.
         @param {Number} user
         @param {Number} index The number of the request to be returned
@@ -1141,10 +1165,11 @@ class Segment(object):
 
     def toHTML(self):
         text = self.text.replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;")
-        return '<span class="segment user-' + self.user + '">' + text + '</span>'
+        return '<span class="segment user-' + str(self.user) + '">' + text + '</span>'
 
 
     def copy(self):
+        print 'segment.copy'
         '''Creates a copy of this segment.
         @returns {Segment} A copy of this segment.
         '''
@@ -1183,6 +1208,7 @@ class Buffer(object):
 
 
     def copy(self):
+        print 'buffer.copy'
         '''Creates a deep copy of this buffer.
         @type Buffer
         '''
@@ -1190,6 +1216,7 @@ class Buffer(object):
 
 
     def compact(self):
+        print 'buffer.compact'
         '''Cleans up the buffer by removing empty segments and combining adjacent
         segments by the same user.
         '''
@@ -1208,6 +1235,7 @@ class Buffer(object):
 
 
     def getLength(self):
+        print 'buffer.getlength'
         '''Calculates the total number of characters contained in this buffer.
         @returns Total character count in this buffer
         @type Number
@@ -1221,6 +1249,7 @@ class Buffer(object):
 
 
     def slice(self, begin, end = None):
+        print 'buffer.slice'
         '''Extracts a deep copy of a range of characters in this buffer and returns
         it as a new Buffer object.
         @param {Number} begin Index of first character to return
@@ -1251,6 +1280,7 @@ class Buffer(object):
 
 
     def splice(self, index, remove, insert):
+        print 'buffer.splice'
         '''Like the Array "splice" method, this method allows for removing and
         inserting text in a buffer at a character level.
         @param {Number} index    The offset at which to begin inserting/removing
