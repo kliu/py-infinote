@@ -87,7 +87,7 @@ class Insert(object):
     
     def __init__(self, position, text):
         self.position = position
-        self.text = text
+        self.text = text.copy()
         
 
     def toString(self):
@@ -174,7 +174,8 @@ class Insert(object):
                 return Insert(pos2, str1)
                 
 
-    def mirror(self):        
+    def mirror(self):    
+        print 'insert.mirror'
         '''Returns the inversion of this Insert operation.
         @type Operations.Delete
         '''
@@ -738,13 +739,24 @@ class Vector(object):
     '''
     user_regex = r'^\d+$'
     timestring_regex = u'/(\d+):(\d+)/g'
+    users = {}
     
     def __init__(self, value = None):
-        
-        if type(value).__name__ != 'NoneType':
-            for user in value:
-                pass
+        if type(value).__name__ == 'Vector':
+            print 'vector.assign_user_from_vector'
+            for key, value in value.users:
+                if key > 0:
+                    self.users[key] = value[value]
+            #for user in value:
+            #    pass
 
+        elif isinstance(value, str):
+            print 'vector.assign_user_from_string'
+            match = re.match(value, self.timestring_regex)
+            while match != None:
+                self.users[str(match[1])] = int(match[2])
+                match = re.match(value, self.timestring_regex)
+            
                 
         #if str(user) not in Operations.get_users() and user != None:
         #    Operations.set_user(str(user))
@@ -779,10 +791,14 @@ class Vector(object):
         @type Boolean
         @returns True if the callback function has never returned false; returns False otherwise.
         '''
-        for user in Operations.get_users():
-            if user.isdigit():
-                if callback(int(user), Operations.get_users()[user]) == False:
-                    return False   
+        for index, user in enumerate(self.users):
+            #disable this for now
+            #if not user.isdigit():
+            #print user
+            #print callback(int(user), Operations.get_users()[user])
+            if callback(index, user) == False:
+                return False   
+        return True
 
 
     def toString(self):            
@@ -792,6 +808,7 @@ class Vector(object):
         components = []
         def Func(u, v):
             if(v > 0):
+                print v
                 components.append("%s:%s" % (u,v))    
         self.eachUser(Func)
         components.sort()   
@@ -823,7 +840,8 @@ class Vector(object):
         '''Returns a specific component of this vector, or 0 if it is not defined.
         @param {Number} user Index of the component to be returned
         '''
-        if Operations.get_users() != None:
+        # != None
+        if str(user) in self.users != None:
             return Operations.get_users()
         else:
             return 0
@@ -851,7 +869,7 @@ class Vector(object):
         '''
         def Func1(u, v):
             return other.get(u) == v        
-        eq1 = self.eachUser(Func)    
+        eq1 = self.eachUser(Func1)    
         this = self
         def Func2(u, v):
             return this.get(u) == v
@@ -859,7 +877,7 @@ class Vector(object):
         return eq1 and eq2
 
 
-    def incr(self, user, by):
+    def incr(self, user, by = None):
         print 'vector.incr'
         '''Returns a new vector with a specific component increased by a given
         amount.
@@ -868,9 +886,9 @@ class Vector(object):
         @type Vector
         '''
         result = Vector(self)    
-        if by == undefined:
-            by = 1    
-        result[user] = result.get(user) + by
+        if by == None:
+            by = 1   
+        result.user = result.get(user) + by
         return result;
 
     def leastCommonSuccessor(self, v1, v2):
@@ -910,7 +928,7 @@ class State(object):
         self.log = []
         self.cache = {}
         
-    def translate(self, request, targetVector, noCache):
+    def translate(self, request, targetVector, noCache = None):
         print 'state.translate'
         '''Translates a request to the given state vector.
         @param {Request} request The request to translate
@@ -1090,8 +1108,12 @@ class State(object):
     
         translated.execute(self)
     
-        if self.onexecute:
+        try:
+            getattr(self, 'onexecute')  
             self.onexecute(translated)
+        except AttributeError:
+            pass
+            
     
         return translated
 
@@ -1242,8 +1264,8 @@ class Buffer(object):
         '''
         length = 0;
         # for index++ loop
-        for index in self.segments:
-            length += self.segments[index].text.length
+        for segment in self.segments:
+            length += len(segment.text)
     
         return length
 
@@ -1295,23 +1317,26 @@ class Buffer(object):
         spliceIndex = index
         spliceCount = remove
         spliceInsertOffset = None
-        while segmentIndex < self.segments.length:
+        #segments.length => len(self.segments)
+        while segmentIndex < len(self.segments):
             segment = self.segments[segmentIndex]            
-            if spliceIndex >= 0 and spliceIndex < segment.text.length:
+            if spliceIndex >= 0 and spliceIndex < len(segment.text):
                 #This segment is part of the region to splice.                
                 #Store the text that this splice operation removes to adjust the
                 #splice offset correctly later on.
-                removedText = segment.text.slice(spliceIndex, spliceIndex + spliceCount)                
+                print segment.text
+                #slice
+                removedText = segment.text[spliceIndex:spliceIndex + spliceCount]                
                 if spliceIndex == 0:
                     #abcdefg
                     #  ^        We're splicing at the beginning of a segment                    
-                    if spliceIndex + spliceCount < segment.text.length:
+                    if spliceIndex + spliceCount < len(segment.text):
                         #abcdefg
                         #^---^    Remove a part at the beginning                        
-                        if spliceInsertOffset == undefined:
+                        if spliceInsertOffset == None:
                             spliceInsertOffset = segmentIndex
-                            
-                        segment.text = segment.text.slice(spliceIndex + spliceCount)
+                        #slice => [:]
+                        segment.text = segment.text[spliceIndex + spliceCount:]
                     else:
                         #abcdefg
                         #^-----^  Remove the entire segment                        
@@ -1323,40 +1348,45 @@ class Buffer(object):
                 else:
                     #abcdefg
                     #  ^      We're splicing inside a segment                
-                    if spliceInsertOffset == undefined:
+                    if spliceInsertOffset == None:
                         spliceInsertOffset = segmentIndex + 1
                     
-                    if spliceIndex + spliceCount < segment.text.length:
+                    if spliceIndex + spliceCount < len(segment.text):
                         # abcdefg
                         #   ^--^   Remove a part in between
                         
                         # Note that if spliceCount == 0, this function only
                         # splits the segment in two. This is necessary in case we
-                        # want to insert new segments later.                        
-                        splicePost = Segment(segment.user, segment.text.slice(spliceIndex + spliceCount))
-                        segment.text = segment.text.slice(0, spliceIndex)
-                        self.segments.splice(segmentIndex + 1, 0, splicePost)
+                        # want to insert new segments later.      
+                        #slice [:]
+                        splicePost = Segment(segment.user, segment.text[spliceIndex + spliceCount:])
+                        #slice [:]
+                        segment.text = segment.text[0:spliceIndex]
+                        #splice (segmentIndex + 1, 0, splicePost) => list.insert(segmentIndex + 1, 0, splicePost)
+                        self.segments.insert(segmentIndex + 1, splicePost)
                     else:
                         # abcdefg
-                        #   ^---^  Remove a part at the end                            
-                        segment.text = segment.text.slice(0, spliceIndex)
-                spliceCount -= removedText.length
+                        #   ^---^  Remove a part at the end   
+                        #slice [:]
+                        segment.text = segment.text[0:spliceIndex]
+                spliceCount -= len(removedText)
             
-            if spliceIndex < segment.text.length and spliceCount == 0:
+            if spliceIndex < len(segment.text) and spliceCount == 0:
                 #We have removed the specified amount of characters. No need to
                 #continue this loop since nothing remains to be done.                
                 if spliceInsertOffset == None:
                     spliceInsertOffset = spliceIndex                
                 break            
-            spliceIndex -= segment.text.length            
+            spliceIndex -= len(segment.text)
             segmentIndex += 1
         if isinstance(insert, Buffer):
             #If a buffer has been given, we insert copies of its segments at the specified position.            
             if spliceInsertOffset == None:
-                spliceInsertOffset = self.segments.length      
+                spliceInsertOffset = len(self.segments)
             #for insertIndex++ loop
-            for insertIndex in insert.segments:
-                self.segments.splice(spliceInsertOffset + insertIndex, 0, insert.segments[insertIndex].copy())        
+            for insertIndex, segment in enumerate(insert.segments):
+                #splice (spliceInsertOffset + insertIndex, 0, insert.segments[insertIndex].copy()) => insert
+                self.segments.insert(spliceInsertOffset + insertIndex, insert.segments[insertIndex].copy())        
         #Clean up since the splice operation might have fragmented some segments.
         self.compact()
         

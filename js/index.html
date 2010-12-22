@@ -7,15 +7,17 @@
 <script type='text/javascript' src='diff_match_patch.js'></script>
 <script type='text/javascript' src='jinfinote-r2.1.js'></script>
 <script type='text/javascript'>
-var initial_segment = new Segment(0, "abcdefghi");
-var initial_buffer = new Buffer([initial_segment]);
-var state = new State(initial_buffer);
-var r1_segment = new Segment(2, "ac");
-var r1_buffer = new Buffer([r1_segment]);
-var r1_operation = new Operations.Insert(2, r1_buffer); 
-var r1_vector = new Vector();
-var r1 = new DoRequest(2, r1_vector, r1_operation);
-var r1_exec = state.execute(r1);
+    var initial_segment = new Segment(0, "abcdefghi");
+    var initial_buffer = new Buffer([initial_segment]);
+    var state = new State(initial_buffer);
+    var r1_segment = new Segment(2, "ac");
+    var r1_buffer = new Buffer([r1_segment]);
+    var r1_operation = new Operations.Insert(2, r1_buffer); 
+    var r1_vector = new Vector();
+    var r1 = new DoRequest(2, r1_vector, r1_operation);
+    state.execute(r1);
+    document.write('RESULT: ' + state.buffer + "<br/>");
+    document.write('VECTOR: ' + state.vector.toString() + "<br/>");
 </script>
 </head>
 </html>

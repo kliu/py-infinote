@@ -821,18 +821,19 @@ function _indexOf(array, searchElement, fromIndex)
 * the form "1:2;3:4;5:6".
 */
 function Vector(value) {
-    
+    console.log(typeof(value));
     if(typeof(value) == "object")
     {
         for(var user in value) {
             if(user.match(Vector.user_regex) && value[user] > 0) {
-                console.log('set thisuser to ' + value[user]);
+                console.log('vector.assign_user_from_vector');
                 this[user] = value[user];
                 console.log(user);
                 console.log(this[user]);
             }
         }
     } else if (typeof(value) == "string") {
+        console.log('vector.assign_user_from_string');
         var match = Vector.timestring_regex.exec(value);
         while (match != null) {
             this[match[1]] = parseInt(match[2]);
@@ -858,9 +859,8 @@ Vector.timestring_regex = /(\d+):(\d+)/g;
 */
 Vector.prototype.eachUser = function(callback) {
     console.log('vector.eachuser');
-    for(var user in this) {        
+    for(var user in this) {  
         if(user.match(Vector.user_regex)) {
-            console.log(user);
             console.log(this[user]);
             console.log(callback(parseInt(user), this[user]));
             if(callback(parseInt(user), this[user]) == false)
@@ -914,8 +914,11 @@ Vector.prototype.copy = function() {
 */
 Vector.prototype.get = function(user) {
     console.log('vector.get');
-    if(this[user] != undefined)
+    console.log('USER: '+user);
+    console.log('USER: '+this[user]);
+    if(this[user] != undefined) {
         return this[user];
+    }
     else
         return 0;
 };
@@ -929,6 +932,7 @@ Vector.prototype.get = function(user) {
 Vector.prototype.causallyBefore = function(other) {
     console.log('vector.causallybefore');
     return this.eachUser(function(u, v) {
+        console.log('fooooooooooooooooooooooooo');
         return v <= other.get(u);
     });
 };
@@ -965,7 +969,7 @@ Vector.prototype.incr = function(user, by) {
     
     if(by == undefined)
         by = 1;
-    
+    console.log(result.get(user));
     result[user] = result.get(user) + by;
     
     return result;
@@ -1516,6 +1520,7 @@ Buffer.prototype.splice = function(index, remove, insert) {
             
             // Store the text that this splice operation removes to adjust the
             // splice offset correctly later on.
+            console.log(typeof(segment.text));
             var removedText = segment.text.slice(spliceIndex, spliceIndex +
                 spliceCount);
             
