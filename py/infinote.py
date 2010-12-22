@@ -560,7 +560,6 @@ class DoRequest(object):
     '''
     def __init__(self, user, vector, operation):
         self.user = user
-        Operations.set_user(user)
         self.vector = vector
         self.operation = operation
         
@@ -585,6 +584,7 @@ class DoRequest(object):
         '''
         self.operation.apply(state.buffer)
         state.vector = state.vector.incr(self.user, 1)
+        print 'state.vector: %s' % state.vector.toString()
         return self
         
 
@@ -747,8 +747,6 @@ class Vector(object):
             for key, value in value.users:
                 if key > 0:
                     self.users[key] = value[value]
-            #for user in value:
-            #    pass
 
         elif isinstance(value, str):
             print 'vector.assign_user_from_string'
@@ -756,30 +754,6 @@ class Vector(object):
             while match != None:
                 self.users[str(match[1])] = int(match[2])
                 match = re.match(value, self.timestring_regex)
-            
-                
-        #if str(user) not in Operations.get_users() and user != None:
-        #    Operations.set_user(str(user))
-            #self.users[str(user)] = str(user)
-        #if isinstance(value, Vector):
-        #    print "WOOOOOOOOOOHOOOOOOOOOOOOO"
-        #if type(value).__name__ == "object":
-        #    print 'blaaaaa'
-        #    for user in value:
-        #        print 'foojjjjjjjj' +user
-        #        if re.match(user, Vector.user_regex) and value[user] > 0:
-        #            self.user = value[user]
-                    
-        #elif isinstance(value, str):
-        #    print 'baabababab'
-        #    #exec => match
-        #    match = re.match(value, self.timestring_regex)
-        #    print match.group(1)
-        #    #match = self.timestring_regex.match(value)
-        #    while match != None:
-        #        Operations.get_users()[match.group(1)] = int(match.group(2))
-        #        #exec => match
-        #        match = Vector.timestring_regex.match(value)
                 
 
     def eachUser(self, callback):
@@ -791,12 +765,9 @@ class Vector(object):
         @type Boolean
         @returns True if the callback function has never returned false; returns False otherwise.
         '''
-        for index, user in enumerate(self.users):
-            #disable this for now
-            #if not user.isdigit():
-            #print user
-            #print callback(int(user), Operations.get_users()[user])
-            if callback(index, user) == False:
+        for key, value in self.users.iteritems():
+            print 'MATCH: %s' % self.users[str(key)]
+            if callback(key, self.users[str(key)]) == False:
                 return False   
         return True
 
@@ -807,8 +778,8 @@ class Vector(object):
         '''
         components = []
         def Func(u, v):
-            if(v > 0):
-                print v
+            if(v > 0):                
+                print 'vector.tostring (%s,%s)' % (u,v)
                 components.append("%s:%s" % (u,v))    
         self.eachUser(Func)
         components.sort()   
@@ -836,13 +807,14 @@ class Vector(object):
 
 
     def get(self, user):
-        print 'vector.get'
         '''Returns a specific component of this vector, or 0 if it is not defined.
         @param {Number} user Index of the component to be returned
         '''
         # != None
+        print 'vector.get(%s)' % user
         if str(user) in self.users != None:
-            return Operations.get_users()
+            print 'vector.get.return(%s)' % self.users[str(user)]
+            return self.users[str(user)]
         else:
             return 0
 
@@ -870,9 +842,9 @@ class Vector(object):
         def Func1(u, v):
             return other.get(u) == v        
         eq1 = self.eachUser(Func1)    
-        this = self
+        #this = self
         def Func2(u, v):
-            return this.get(u) == v
+            return self.get(u) == v
         eq2 = other.eachUser(Func2)
         return eq1 and eq2
 
@@ -887,9 +859,10 @@ class Vector(object):
         '''
         result = Vector(self)    
         if by == None:
-            by = 1   
-        result.user = result.get(user) + by
-        return result;
+            by = 1
+        print 'vector.incr %s' % result.get(user)
+        result.users[str(user)] = result.get(user) + by
+        return result
 
     def leastCommonSuccessor(self, v1, v2):
         print 'vector.leastcommonsuccessor'
@@ -968,7 +941,8 @@ class State(object):
                 return mirrored        
             #If mirrorAt is not reachable, we need to mirror earlier and then
             #perform a translation afterwards, which is attempted next.
-        for _user in self.vector:
+        for _user in self.vector.users:
+            print 'state.translate ' + _user
             #We now iterate through all users to see how we can translate the request to the desired state.
             if not _user.match(Vector.user_regex): continue        
             user = int(_user)        

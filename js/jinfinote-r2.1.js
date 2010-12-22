@@ -611,10 +611,9 @@ DoRequest.prototype.copy = function() {
 */
 DoRequest.prototype.execute = function(state) {
     console.log('dorequest.execute');
-    this.operation.apply(state.buffer);
-    
+    this.operation.apply(state.buffer);    
     state.vector = state.vector.incr(this.user, 1);
-    
+    console.log('state.vector: ' + state.vector);    
     return this;
 };
 
@@ -828,8 +827,6 @@ function Vector(value) {
             if(user.match(Vector.user_regex) && value[user] > 0) {
                 console.log('vector.assign_user_from_vector');
                 this[user] = value[user];
-                console.log(user);
-                console.log(this[user]);
             }
         }
     } else if (typeof(value) == "string") {
@@ -861,8 +858,7 @@ Vector.prototype.eachUser = function(callback) {
     console.log('vector.eachuser');
     for(var user in this) {  
         if(user.match(Vector.user_regex)) {
-            console.log(this[user]);
-            console.log(callback(parseInt(user), this[user]));
+            console.log('MATCH:' + this[user]);
             if(callback(parseInt(user), this[user]) == false)
                 return false;
         }
@@ -878,8 +874,10 @@ Vector.prototype.toString = function() {
     var components = new Array();
     
     this.eachUser(function(u, v) {
-        if(v > 0)
+        if(v > 0) {
+            console.log('vector.tostring ('+u+','+v+')');
             components.push(u + ":" + v);
+        }
     });
     
     components.sort();
@@ -897,6 +895,7 @@ Vector.prototype.add = function(other) {
     var result = new Vector(this);
     
     other.eachUser(function(u, v) {
+        console.log('vector.add('+u+','+v+')');
         result[u] = result.get(u) + v;
     });
     
@@ -913,10 +912,9 @@ Vector.prototype.copy = function() {
 *  @param {Number} user Index of the component to be returned
 */
 Vector.prototype.get = function(user) {
-    console.log('vector.get');
-    console.log('USER: '+user);
-    console.log('USER: '+this[user]);
+    console.log('vector.get('+user+')');
     if(this[user] != undefined) {
+        console.log('vector.get.return('+this[user]+')');
         return this[user];
     }
     else
@@ -932,7 +930,6 @@ Vector.prototype.get = function(user) {
 Vector.prototype.causallyBefore = function(other) {
     console.log('vector.causallybefore');
     return this.eachUser(function(u, v) {
-        console.log('fooooooooooooooooooooooooo');
         return v <= other.get(u);
     });
 };
@@ -969,7 +966,7 @@ Vector.prototype.incr = function(user, by) {
     
     if(by == undefined)
         by = 1;
-    console.log(result.get(user));
+    console.log('vector.incr (key:'+ user+',value:'+result.get(user)+')');
     result[user] = result.get(user) + by;
     
     return result;
@@ -1072,9 +1069,10 @@ State.prototype.translate = function(request, targetVector, noCache) {
     {
         // We now iterate through all users to see how we can translate
         // the request to the desired state.
-        
+        console.log('state.translate ' + _user);
         if(!_user.match(Vector.user_regex))
             continue;
+        
         
         var user = parseInt(_user);
         
