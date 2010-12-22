@@ -15,9 +15,20 @@
     var r1_operation = new Operations.Insert(2, r1_buffer); 
     var r1_vector = new Vector();
     var r1 = new DoRequest(2, r1_vector, r1_operation);
-    state.execute(r1);
-    document.write('RESULT: ' + state.buffer + "<br/>");
-    document.write('VECTOR: ' + state.vector.toString() + "<br/>");
+    var executed_r1 = state.execute(r1);
+    document.write('Request 1:' + executed_r1.toString() + "<br/>");
+    document.write('&nbsp;&nbsp;Vector 1:' + state.vector.toString() + "<br/>");
+    document.write('&nbsp;&nbsp;&nbsp;Result 1:' + state.buffer + "<br/><br/>");
+    //so far so good
+    var r2_segment = new Segment(3, "bc");
+    var r2_buffer = new Buffer([r2_segment]);
+    var r2_operation = new Operations.Insert(3, r2_buffer);
+    var r2_vector = new Vector();
+    var r2 = new DoRequest(3, r2_vector, r2_operation);
+    var executed_r2 = state.execute(r2);
+    document.write('Request 2:&nbsp;' + executed_r2.toString() + "<br/>");
+    document.write('&nbsp;&nbsp;Vector 2:&nbsp;' + state.vector.toString() + "<br/>");
+    document.write('&nbsp;&nbsp;Result 2:&nbsp;' + state.buffer + "<br/>"); // outputs "abaccbcdefghi"
 </script>
 </head>
 </html>

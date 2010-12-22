@@ -51,9 +51,22 @@ def test_1():
     r1_operation = Insert(2, r1_buffer) 
     r1_vector = Vector()
     r1 = DoRequest(2, r1_vector, r1_operation)
-    r1_exec = state.execute(r1) 
-    print 'RESULT: %s' % state.buffer
-    print 'VECTOR: %s' % state.vector.toString()
+    executed_r1 = state.execute(r1) 
+    print 'Request 1: %s' % executed_r1.toString()
+    print ' Vector 1: %s' % state.vector.toString() #this outputs 2:1
+    print ' Result 1: %s\n' % state.buffer #this outputs abaccdefghi
+    #so far so good
+    r2_segment = Segment(3, "bc")
+    r2_buffer = Buffer([r2_segment])
+    r2_operation = Insert(3, r2_buffer)
+    r2_vector = Vector()
+    r2 = DoRequest(3, r2_vector, r2_operation)
+    executed_r2 = state.execute(r2)
+    print 'Request 2: %s' % executed_r2.toString()
+    print ' Vector 2: %s' % state.vector.toString() #this outputs 2:1
+    print ' Result 2: %s' % state.buffer #this should output "abaccbcdefghi"
+    #aba-bc-ccdefghi offset 3
+
 
     
 test_1()

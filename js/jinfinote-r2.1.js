@@ -79,7 +79,6 @@ Operations.Insert.prototype.toHTML = function() {
 *  performed.
 */
 Operations.Insert.prototype.apply = function(buffer) {
-    console.log('insert.apply');
     buffer.splice(this.position, 0, this.text);
 };
 
@@ -89,7 +88,6 @@ Operations.Insert.prototype.apply = function(buffer) {
 *  @type Operations.Insert
 */
 Operations.Insert.prototype.cid = function(other) {
-    console.log('insert.cid');
     if(this.position < other.position)
         return other;
     if(this.position > other.position)
@@ -112,7 +110,6 @@ Operations.Insert.prototype.getLength = function() {
 *  @type Operation
 */
 Operations.Insert.prototype.transform = function(other, cid) {
-    console.log('insert.transform');
     if(other instanceof Operations.NoOp)
         return new Operations.Insert(this.position, this.text);
     
@@ -159,7 +156,6 @@ Operations.Insert.prototype.transform = function(other, cid) {
 *  @type Operations.Delete
 */
 Operations.Insert.prototype.mirror = function() {
-    console.log('insert.mirror');
     return new Operations.Delete(this.position, this.text.copy());
 };
 
@@ -593,7 +589,7 @@ function DoRequest(user, vector, operation) {
 
 DoRequest.prototype.toString = function() {
     return "DoRequest(" + 
-        [this.user, this.vector, this.operation].join(", ") + ")";
+        [this.user, this.vector.toString(), this.operation].join(", ") + ")";
 };
 
 DoRequest.prototype.toHTML = function() {
@@ -610,10 +606,8 @@ DoRequest.prototype.copy = function() {
 *  @param {State} state The state to which the request should be applied.
 */
 DoRequest.prototype.execute = function(state) {
-    console.log('dorequest.execute');
     this.operation.apply(state.buffer);    
     state.vector = state.vector.incr(this.user, 1);
-    console.log('state.vector: ' + state.vector);    
     return this;
 };
 
@@ -624,7 +618,7 @@ DoRequest.prototype.execute = function(state) {
 *  @type DoRequest
 */
 DoRequest.prototype.transform = function(other, cid) {
-    console.log('dorequest.transform');
+    console.log('transform');
     if(this.operation instanceof Operations.NoOp)
         var newOperation = new Operations.NoOp();
     else {
@@ -648,7 +642,6 @@ DoRequest.prototype.transform = function(other, cid) {
 *  @type DoRequest
 */
 DoRequest.prototype.mirror = function(amount) {
-    console.log('dorequest.mirror');
     if(typeof(amount) != "number")
         amount = 1;
     return new DoRequest(this.user, this.vector.incr(this.user, amount),
@@ -660,7 +653,6 @@ DoRequest.prototype.mirror = function(amount) {
 *  @type DoRequest
 */
 DoRequest.prototype.fold = function(user, amount) {
-    console.log('dorequest.fold');
     if(amount % 2 == 1)
         throw "Fold amounts must be multiples of 2.";
     return new DoRequest(this.user, this.vector.incr(user, amount),
@@ -820,17 +812,15 @@ function _indexOf(array, searchElement, fromIndex)
 * the form "1:2;3:4;5:6".
 */
 function Vector(value) {
-    console.log(typeof(value));
     if(typeof(value) == "object")
     {
         for(var user in value) {
             if(user.match(Vector.user_regex) && value[user] > 0) {
-                console.log('vector.assign_user_from_vector');
                 this[user] = value[user];
             }
         }
     } else if (typeof(value) == "string") {
-        console.log('vector.assign_user_from_string');
+        
         var match = Vector.timestring_regex.exec(value);
         while (match != null) {
             this[match[1]] = parseInt(match[2]);
@@ -855,10 +845,8 @@ Vector.timestring_regex = /(\d+):(\d+)/g;
 *  False otherwise.
 */
 Vector.prototype.eachUser = function(callback) {
-    console.log('vector.eachuser');
     for(var user in this) {  
         if(user.match(Vector.user_regex)) {
-            console.log('MATCH:' + this[user]);
             if(callback(parseInt(user), this[user]) == false)
                 return false;
         }
@@ -875,13 +863,11 @@ Vector.prototype.toString = function() {
     
     this.eachUser(function(u, v) {
         if(v > 0) {
-            console.log('vector.tostring ('+u+','+v+')');
             components.push(u + ":" + v);
         }
     });
     
     components.sort();
-    
     return components.join(";");
 };
 
@@ -891,11 +877,9 @@ Vector.prototype.toHTML = Vector.prototype.toString;
 *  @param {Vector} other
 */ 
 Vector.prototype.add = function(other) {
-    console.log('vector.add');
     var result = new Vector(this);
     
     other.eachUser(function(u, v) {
-        console.log('vector.add('+u+','+v+')');
         result[u] = result.get(u) + v;
     });
     
@@ -904,7 +888,6 @@ Vector.prototype.add = function(other) {
 
 /** Returns a copy of this vector. */
 Vector.prototype.copy = function() {
-    console.log('vector.copy');
     return new Vector(this);
 };
 
@@ -912,9 +895,7 @@ Vector.prototype.copy = function() {
 *  @param {Number} user Index of the component to be returned
 */
 Vector.prototype.get = function(user) {
-    console.log('vector.get('+user+')');
     if(this[user] != undefined) {
-        console.log('vector.get.return('+this[user]+')');
         return this[user];
     }
     else
@@ -928,7 +909,6 @@ Vector.prototype.get = function(user) {
 *  @type Boolean
 */
 Vector.prototype.causallyBefore = function(other) {
-    console.log('vector.causallybefore');
     return this.eachUser(function(u, v) {
         return v <= other.get(u);
     });
@@ -941,7 +921,6 @@ Vector.prototype.causallyBefore = function(other) {
 *  @type Boolean
 */
 Vector.prototype.equals = function(other) {
-    console.log('vector.equals');
     var eq1 = this.eachUser(function(u, v) {
         return other.get(u) == v;
     });
@@ -961,12 +940,10 @@ Vector.prototype.equals = function(other) {
 *  @type Vector
 */
 Vector.prototype.incr = function(user, by) {    
-    console.log('vector.incr');
     var result = new Vector(this);
     
     if(by == undefined)
         by = 1;
-    console.log('vector.incr (key:'+ user+',value:'+result.get(user)+')');
     result[user] = result.get(user) + by;
     
     return result;
@@ -978,7 +955,6 @@ Vector.prototype.incr = function(user, by) {
 *  @type Vector
 */
 Vector.leastCommonSuccessor = function(v1, v2) {
-    console.log('vector.leastcommonsuccessor');
     var result = v1.copy();
     
     v2.eachUser(function(u, v) {
@@ -1016,15 +992,13 @@ function State(buffer, vector) {
 *  @param {Vector} targetVector The target state vector
 *  @param {Boolean} [nocache] Set to true to bypass the translation cache.
 */
-State.prototype.translate = function(request, targetVector, noCache) {	
-    console.log('state.translate');
+State.prototype.translate = function(request, targetVector, noCache) {
     if(request instanceof DoRequest && request.vector.equals(targetVector)) {
         // If the request vector is not an undo/redo request and is already
         // at the desired state, simply return the original request since
         // there is nothing to do.
         return request.copy();
     }
-    
     // Before we attempt to translate the request, we check whether it is
     // cached already.
     var cache_key = [request, targetVector].toString();
@@ -1069,10 +1043,8 @@ State.prototype.translate = function(request, targetVector, noCache) {
     {
         // We now iterate through all users to see how we can translate
         // the request to the desired state.
-        console.log('state.translate ' + _user);
         if(!_user.match(Vector.user_regex))
             continue;
-        
         
         var user = parseInt(_user);
         
@@ -1196,7 +1168,6 @@ State.prototype.translate = function(request, targetVector, noCache) {
 *  @param {Request} request The request to be queued.
 */
 State.prototype.queue = function(request) {
-    console.log('state.queue');
     this.request_queue.push(request);
 };
 
@@ -1204,7 +1175,6 @@ State.prototype.queue = function(request) {
 *  @type Boolean
 */
 State.prototype.canExecute = function(request) {
-    console.log('state.canexecute');
     if(request == undefined)
         return false;
     
@@ -1222,7 +1192,6 @@ State.prototype.canExecute = function(request) {
 *  has been executed.
 */
 State.prototype.execute = function(request) {
-    console.log('state.execute');
     if(request == undefined)
     {
         // Pick an executable request from the queue.
@@ -1279,7 +1248,6 @@ State.prototype.execute = function(request) {
 
 /** Executes all queued requests that are ready for execution. */
 State.prototype.executeAll = function() {
-    console.log('state.executeall');
     do {
         var executed = this.execute();
     } while(executed);
@@ -1290,7 +1258,6 @@ State.prototype.executeAll = function() {
 *  @type Boolean
 */
 State.prototype.reachable = function(vector) {
-    console.log('state.reachable');
     var self = this;
     return this.vector.eachUser(function(u, v) {
         return self.reachableUser(vector, u);
@@ -1298,7 +1265,6 @@ State.prototype.reachable = function(vector) {
 };
 
 State.prototype.reachableUser = function(vector, user) {
-    console.log('state.reachableuser');
     var n = vector.get(user);
     
     while(true) {
@@ -1328,7 +1294,6 @@ State.prototype.reachableUser = function(vector, user) {
 *  @param {Number} index The number of the request to be returned
 */
 State.prototype.requestByUser = function(user, getIndex) {
-    console.log('state.requestbyuser');
     var userReqCount = 0;
     for(var reqIndex in this.log)
     {
@@ -1370,7 +1335,6 @@ Segment.prototype.toHTML = function() {
 *  @returns {Segment} A copy of this segment.
 */
 Segment.prototype.copy = function() {
-    console.log('segment.copy');
     return new Segment(this.user, this.text)
 };
 
@@ -1406,7 +1370,6 @@ Buffer.prototype.toHTML = function() {
 * @type Buffer
 */
 Buffer.prototype.copy = function() {
-    console.log('buffer.copy');
     return this.slice(0);
 };
 
@@ -1414,7 +1377,6 @@ Buffer.prototype.copy = function() {
 *  segments by the same user.
 */
 Buffer.prototype.compact = function() {
-    console.log('buffer.compact');
     var segmentIndex = 0;
     while(segmentIndex < this.segments.length)
     {
@@ -1426,7 +1388,6 @@ Buffer.prototype.compact = function() {
         } else if(segmentIndex < this.segments.length - 1 && 
             this.segments[segmentIndex].user == 
             this.segments[segmentIndex+1].user) {
-            
             // Two consecutive segments are from the same user; merge them
             // into one.
             this.segments[segmentIndex].text +=
@@ -1445,7 +1406,6 @@ Buffer.prototype.compact = function() {
 * @type Number
 */
 Buffer.prototype.getLength = function() {
-    console.log('buffer.getlength');
     var length = 0;
     for(var index = 0; index < this.segments.length; index++)
         length += this.segments[index].text.length;
@@ -1462,7 +1422,6 @@ Buffer.prototype.getLength = function() {
 *  @type Buffer
 */
 Buffer.prototype.slice = function(begin, end) {
-    console.log('buffer.slice');
     var result = new Buffer();
     
     var segmentIndex = 0, segmentOffset = 0, sliceBegin = begin,
@@ -1502,7 +1461,6 @@ Buffer.prototype.slice = function(begin, end) {
 *  @param {Buffer} [insert] Buffer to insert
 */
 Buffer.prototype.splice = function(index, remove, insert) {
-    console.log('buffer.splice');
     if(index > this.getLength())
         throw "Buffer splice operation out of bounds";
     
@@ -1518,7 +1476,6 @@ Buffer.prototype.splice = function(index, remove, insert) {
             
             // Store the text that this splice operation removes to adjust the
             // splice offset correctly later on.
-            console.log(typeof(segment.text));
             var removedText = segment.text.slice(spliceIndex, spliceIndex +
                 spliceCount);
             
