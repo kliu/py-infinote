@@ -79,6 +79,9 @@ Operations.Insert.prototype.toHTML = function() {
 *  performed.
 */
 Operations.Insert.prototype.apply = function(buffer) {
+    console.log(buffer.toString());
+    console.log(this.position);
+    console.log(this.text.toString());
     buffer.splice(this.position, 0, this.text);
 };
 
@@ -110,6 +113,7 @@ Operations.Insert.prototype.getLength = function() {
 *  @type Operation
 */
 Operations.Insert.prototype.transform = function(other, cid) {
+    console.log('transform');
     if(other instanceof Operations.NoOp)
         return new Operations.Insert(this.position, this.text);
     
@@ -136,10 +140,13 @@ Operations.Insert.prototype.transform = function(other, cid) {
     if(other instanceof Operations.Insert) {
         var str2 = other.text;
         
-        if(pos1 < pos2 || (pos1 == pos2 && cid == other))
+        if(pos1 < pos2 || (pos1 == pos2 && cid == other)) {
             return new Operations.Insert(pos1, str1);
-        if(pos1 > pos2 || (pos1 == pos2 && cid == this))
+        }
+        if(pos1 > pos2 || (pos1 == pos2 && cid == this)) {
+            console.log(pos1);
             return new Operations.Insert(pos1 + str2.getLength(), str1);
+        }
     } else if(other instanceof Operations.Delete) {
         var len2 = other.getLength();
         
@@ -606,8 +613,11 @@ DoRequest.prototype.copy = function() {
 *  @param {State} state The state to which the request should be applied.
 */
 DoRequest.prototype.execute = function(state) {
+    console.log('dorequest.execute');
+    console.log(this.operation.toString());
     this.operation.apply(state.buffer);    
     state.vector = state.vector.incr(this.user, 1);
+    console.log('vec '+state.vector.toString());
     return this;
 };
 
@@ -618,7 +628,7 @@ DoRequest.prototype.execute = function(state) {
 *  @type DoRequest
 */
 DoRequest.prototype.transform = function(other, cid) {
-    console.log('transform');
+    console.log('dorequest.transform');
     if(this.operation instanceof Operations.NoOp)
         var newOperation = new Operations.NoOp();
     else {
@@ -1002,6 +1012,7 @@ State.prototype.translate = function(request, targetVector, noCache) {
     // Before we attempt to translate the request, we check whether it is
     // cached already.
     var cache_key = [request, targetVector].toString();
+    console.log([request, targetVector].toString());
     if(this.cache != undefined && !noCache) {
         if(!this.cache[cache_key])
             this.cache[cache_key] = this.translate(request, targetVector, true);
@@ -1041,6 +1052,7 @@ State.prototype.translate = function(request, targetVector, noCache) {
     
     for(var _user in this.vector)
     {
+        console.log('userrrr:'+_user);
         // We now iterate through all users to see how we can translate
         // the request to the desired state.
         if(!_user.match(Vector.user_regex))
@@ -1156,7 +1168,7 @@ State.prototype.translate = function(request, targetVector, noCache) {
                 if(cid == r2.operation)
                     cid_req = r2;
             }
-            
+            console.log('state.transform');
             return r1.transform(r2, cid_req);
         }
     }
@@ -1192,6 +1204,7 @@ State.prototype.canExecute = function(request) {
 *  has been executed.
 */
 State.prototype.execute = function(request) {
+    console.log('translate '+request.vector.toString()+'against '+this.vector.toString());
     if(request == undefined)
     {
         // Pick an executable request from the queue.
@@ -1226,7 +1239,6 @@ State.prototype.execute = function(request) {
         newVector[request.user] = request.vector.get(request.user);
         request.vector = newVector;
     }
-    
     var translated = this.translate(request, this.vector);
     
     if(request instanceof DoRequest && request.operation instanceof Operations.Delete) {
@@ -1297,6 +1309,7 @@ State.prototype.requestByUser = function(user, getIndex) {
     var userReqCount = 0;
     for(var reqIndex in this.log)
     {
+        console.log('index'+reqIndex);
         if(this.log[reqIndex].user == user)
         {
             if(userReqCount == getIndex)
@@ -1520,8 +1533,7 @@ Buffer.prototype.splice = function(index, remove, insert) {
                     // splits the segment in two. This is necessary in case we
                     // want to insert new segments later.
                     
-                    var splicePost = new Segment(segment.user,
-                        segment.text.slice(spliceIndex + spliceCount));
+                    var splicePost = new Segment(segment.user, segment.text.slice(spliceIndex + spliceCount));
                     segment.text = segment.text.slice(0, spliceIndex);
                     this.segments.splice(segmentIndex + 1, 0, splicePost);
                 } else {

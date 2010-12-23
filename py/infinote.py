@@ -158,7 +158,7 @@ class Insert(object):
         pos2 = self.position
     
         if isinstance(other, Insert):            
-            str2 = other.text        
+            str2 = other.text      
             if(pos1 < pos2 or (pos1 == pos2 and cid == other)):
                 return Insert(pos1, str1)
             if(pos1 > pos2 or (pos1 == pos2 and cid == self)):
@@ -604,7 +604,6 @@ class DoRequest(object):
         the request that is to be transformed in case of conflicting operations.
         @type DoRequest
         '''
-        print "CALLED"
         if isinstance(self.operation, NoOp):
             newOperation = NoOp()
         else:            
@@ -753,10 +752,10 @@ class Vector(object):
     a Vector object, a generic Object with numeric properties, or a string of the form "1:2;3:4;5:6".
     '''
     user_regex = r'^\d+$'
-    timestring_regex = u'/(\d+):(\d+)/g'
-    users = {}
+    timestring_regex = u'/(\d+):(\d+)/g'    
     
     def __init__(self, value = None):
+        self.users = {}
         if type(value).__name__ == 'Vector':
             for key, value in value.users.iteritems():
                 if key > 0:
@@ -919,10 +918,12 @@ class State(object):
             #simply return the original request since there is nothing to do.
             return request.copy()
         #Before we attempt to translate the request, we check whether it is cached already.
-        cache_key = [request, targetVector].toString()
+        #[DoRequest(3, , Insert(3, bc)), 2:1]
+        #DoRequest(3, , Insert(3, bc)),2:1
+        cache_key = str([request, targetVector])
         if self.cache != None and not noCache:            
-            if not self.cache[cache_key]:
-                self.cache[cache_key] = self.translate(request, targetVector, true)        
+            if not cache_key in self.cache:
+                self.cache[cache_key] = self.translate(request, targetVector, True)        
             #FIXME: translated requests are not cleared from the cache, so this might fill up considerably.
             return self.cache[cache_key]
 
@@ -946,7 +947,7 @@ class State(object):
                 return mirrored        
             #If mirrorAt is not reachable, we need to mirror earlier and then
             #perform a translation afterwards, which is attempted next.
-        for key,_user in self.vector.users.iteritems():
+        for _user,key in self.vector.users.iteritems():
             #We now iterate through all users to see how we can translate the request to the desired state.    
             user = int(_user)        
             #The request's issuing user is left out since it is not possible to transform or fold a request along its own user
@@ -1014,7 +1015,7 @@ class State(object):
                     if cid == r1.operation:
                         cid_req = r1
                     if cid == r2.operation:
-                        cid_req = r2            
+                        cid_req = r2    
                 return r1.transform(r2, cid_req)
         raise 'Could not find a translation path'
 
@@ -1038,7 +1039,7 @@ class State(object):
             return request.vector.causallyBefore(self.vector)
             
 
-    def execute(self, request = None):     
+    def execute(self, request = None):    
         '''Executes a request that is executable.
         @param {Request} [request] The request to be executed. If omitted, an
         executable request is picked from the request queue instead.
@@ -1069,7 +1070,7 @@ class State(object):
             newVector = Vector(assocReq.vector)
             newVector[request.user] = request.vector.get(request.user)
             request.vector = newVector
-    
+        
         translated = self.translate(request, self.vector)
         #print translated.toString()
     
@@ -1114,7 +1115,7 @@ class State(object):
         n = vector.get(user)    
         while True:
             if n == 0:
-                return true
+                return True
         
             r = self.requestByUser(user, n - 1)        
         if r == None:
@@ -1133,7 +1134,7 @@ class State(object):
         @param {Number} index The number of the request to be returned
         '''
         userReqCount = 0;
-        for reqIndex in self.log:
+        for reqIndex, request in enumerate(self.log):
             if self.log[reqIndex].user == user:
                 if(userReqCount == getIndex):
                     return self.log[reqIndex]
@@ -1182,6 +1183,10 @@ class Buffer(object):
                 self.segments.append(segment.copy())
 
 
+    def __repr__(self):
+        return self.toString()
+        
+
     def toString(self):
         output = ''
         for segment in self.segments:
@@ -1217,7 +1222,6 @@ class Buffer(object):
                 continue
             elif segmentIndex < len(self.segments) - 1 and self.segments[segmentIndex].user == self.segments[segmentIndex+1].user:
                 #Two consecutive segments are from the same user; merge them into one.
-                print 'FOOBAR'
                 self.segments[segmentIndex].text += self.segments[segmentIndex+1].text                
                 self.segments.splice(segmentIndex+1, 1)
                 continue            
@@ -1289,7 +1293,7 @@ class Buffer(object):
                 #Store the text that this splice operation removes to adjust the
                 #splice offset correctly later on.
                 #slice
-                removedText = segment.text[spliceIndex:spliceIndex + spliceCount]                
+                removedText = segment.text[spliceIndex:(spliceIndex + spliceCount)]                
                 if spliceIndex == 0:
                     #abcdefg
                     #  ^        We're splicing at the beginning of a segment                    
@@ -1299,11 +1303,11 @@ class Buffer(object):
                         if spliceInsertOffset == None:
                             spliceInsertOffset = segmentIndex
                         #slice => [:]
-                        segment.text = segment.text[spliceIndex + spliceCount:]
+                        segment.text = segment.text[(spliceIndex + spliceCount):]
                     else:
                         #abcdefg
                         #^-----^  Remove the entire segment                        
-                        if spliceInsertOffset == undefined:
+                        if spliceInsertOffset == None:
                             spliceInsertOffset = segmentIndex                        
                         segment.text = ""
                         self.segments.splice(segmentIndex, 1)
@@ -1322,7 +1326,7 @@ class Buffer(object):
                         # splits the segment in two. This is necessary in case we
                         # want to insert new segments later.      
                         #slice [:]
-                        splicePost = Segment(segment.user, segment.text[spliceIndex + spliceCount:])
+                        splicePost = Segment(segment.user, segment.text[(spliceIndex + spliceCount):])
                         #slice [:]
                         segment.text = segment.text[0:spliceIndex]
                         #splice (segmentIndex + 1, 0, splicePost) => list.insert(segmentIndex + 1, 0, splicePost)
@@ -1352,6 +1356,3 @@ class Buffer(object):
                 self.segments.insert(spliceInsertOffset + insertIndex, insert.segments[insertIndex].copy())        
         #Clean up since the splice operation might have fragmented some segments.
         self.compact()
-        
-    def __repr__(self):
-        return self.toString()
