@@ -194,10 +194,10 @@ class Delete(object):
     @param what The data to be removed. This can be either a numeric value
     or a Buffer object.
     '''
-    requiresCID = False
     
     def __init__(self, position, what, recon = None):
         self.position = position
+        self.requiresCID = False
         
         if isinstance(what, Buffer):
             self.what = what.copy()
@@ -252,7 +252,7 @@ class Delete(object):
             return self.what
             
 
-    def split(self, at):        
+    def split(self, at):  
         '''Splits this Delete operation into two Delete operations at the given
         offset. The resulting Split operation will consist of two Delete
         operations which, when combined, affect the same range of text as the
@@ -279,8 +279,9 @@ class Delete(object):
                 else:
                     recon2.segments.push(ReconSegment(self.recon.segments[index].offset - at, self.recon.segments[index].buffer))        
         return Split(Delete(self.position, at, recon1), Delete(self.position + at, self.what - at, recon2))
+        
 
-
+    @classmethod
     def getAffectedString(self, operation, buffer):
         '''Returns the range of text in a buffer that this Delete or Split-Delete operation removes.
         @param operation A Split-Delete or Delete operation
@@ -290,7 +291,7 @@ class Delete(object):
         if isinstance(operation, Split):           
             #The other operation is a Split operation. We call this function again recursively for each component.
             part1 = Delete.getAffectedString(operation.first, buffer)
-            part2 = Operations.Delete.getAffectedString(operation.second, buffer)
+            part2 = Delete.getAffectedString(operation.second, buffer)
             part2.splice(0, 0, part1)
             return part2
         elif isinstance(operation,Delete):
@@ -334,7 +335,7 @@ class Delete(object):
             return Delete(self.position, newLength)
 
 
-    def transform(self, other, cid):       
+    def transform(self, other, cid = None):   
         '''Transforms this Delete operation against another operation.
         @param {Operation} other
         @param {Operation} [cid]
@@ -471,11 +472,11 @@ class Split(object):
         transformedSecond.apply(buffer)
 
 
-    def cid(self):
+    def cid(self, foo):
         pass
     
     
-    def transform(self, other, cid):
+    def transform(self, other, cid = None):
         '''Transforms this Split operation against another operation. This is done
         by transforming both components individually.
         @param {Operation} other
@@ -606,7 +607,8 @@ class DoRequest(object):
         '''
         if isinstance(self.operation, NoOp):
             newOperation = NoOp()
-        else:            
+        else:   
+            op_cid = None
             if(cid == self):
                 op_cid = self.operation
             if(cid == other):
@@ -648,7 +650,7 @@ class DoRequest(object):
         @type DoRequest
         '''
         result = self.copy()    
-        if isinstance(self.operation, Operations.Delete):
+        if isinstance(self.operation, Delete):
             result.operation = self.operation.makeReversible(translated.operation, state)
         return result
 
@@ -780,8 +782,8 @@ class Vector(object):
         @type Boolean
         @returns True if the callback function has never returned false; returns False otherwise.
         '''
-        for key, value in self.users.iteritems():
-            if callback(key, self.users[str(key)]) == False:
+        for key, value in self.users.iteritems():         
+            if callback(int(key), int(value)) == False:
                 return False   
         return True
 
@@ -869,6 +871,7 @@ class Vector(object):
         return result
         
 
+    @classmethod
     def leastCommonSuccessor(self, v1, v2):
         '''Calculates the least common successor of two vectors.
         @param {Vector} v1
@@ -906,13 +909,12 @@ class State(object):
         self.cache = {}
         
         
-    def translate(self, request, targetVector, noCache = None):
+    def translate(self, request, targetVector, noCache = False):
         '''Translates a request to the given state vector.
         @param {Request} request The request to translate
         @param {Vector} targetVector The target state vector
         @param {Boolean} [nocache] Set to true to bypass the translation cache.
         '''
-        #print request.vector.toString()
         if isinstance(request, DoRequest) and request.vector.equals(targetVector):
             #If the request vector is not an undo/redo request and is already at the desired state, 
             #simply return the original request since there is nothing to do.
@@ -921,7 +923,7 @@ class State(object):
         #[DoRequest(3, , Insert(3, bc)), 2:1]
         #DoRequest(3, , Insert(3, bc)),2:1
         cache_key = str([request, targetVector])
-        if self.cache != None and not noCache:            
+        if self.cache != None and not noCache:     
             if not cache_key in self.cache:
                 self.cache[cache_key] = self.translate(request, targetVector, True)        
             #FIXME: translated requests are not cleared from the cache, so this might fill up considerably.
@@ -948,16 +950,17 @@ class State(object):
             #If mirrorAt is not reachable, we need to mirror earlier and then
             #perform a translation afterwards, which is attempted next.
         for _user,key in self.vector.users.iteritems():
-            #We now iterate through all users to see how we can translate the request to the desired state.    
+            #We now iterate through all users to see how we can translate the request to the desired state. 
             user = int(_user)        
             #The request's issuing user is left out since it is not possible to transform or fold a request along its own user
-            if user == request.user: continue        
+            if user == request.user:
+                continue        
             #We can only transform against requests that have been issued
             #between the translated request's vector and the target vector.
-            if targetVector.get(user) <= request.vector.get(user): continue
-            
+            if targetVector.get(user) <= request.vector.get(user): 
+                continue     
             #Fetch the last request by this user that contributed to the current state vector.
-            lastRequest = self.requestByUser(user, targetVector.get(user) - 1)        
+            lastRequest = self.requestByUser(user, targetVector.get(user) - 1) 
             if isinstance(lastRequest, UndoRequest) or isinstance(lastRequest, RedoRequest):
                 #When the last request was an undo/redo request, we can try to
                 #"fold" over it. By just skipping the do/undo or undo/redo pair,
@@ -976,9 +979,10 @@ class State(object):
             #the current state vector.        
             transformAt = targetVector.incr(user, -1)
             if transformAt.get(user) >= 0 and self.reachable(transformAt):
-                lastRequest = self.requestByUser(user, transformAt.get(user))            
+                lastRequest = self.requestByUser(user, transformAt.get(user))     
                 r1 = self.translate(request, transformAt)
-                r2 = self.translate(lastRequest, transformAt)            
+                r2 = self.translate(lastRequest, transformAt)    
+                cid_req = None
                 if r1.operation.requiresCID:
                     #For the Insert operation, we need to check whether it is
                     #possible to determine which operation is to be transformed.
@@ -1017,7 +1021,7 @@ class State(object):
                     if cid == r2.operation:
                         cid_req = r2    
                 return r1.transform(r2, cid_req)
-        raise 'Could not find a translation path'
+        raise Exception('Could not find a translation path')
 
 
     def queue(self, request):
@@ -1047,7 +1051,7 @@ class State(object):
         has been executed.
         '''
         if request == None:
-            #Pick an executable request from the queue.
+              #Pick an executable request from the queue.
             #for (index = 0 ++ loop)
             for index, value in enumerate(self.request_queue):
                 request = self.request_queue[index]
@@ -1056,6 +1060,7 @@ class State(object):
                     break
 
         if not self.canExecute(request):
+            
             #Not executable yet - put it (back) in the queue.
             if request != None:
                 self.queue(request)        
@@ -1070,10 +1075,8 @@ class State(object):
             newVector = Vector(assocReq.vector)
             newVector[request.user] = request.vector.get(request.user)
             request.vector = newVector
-        
         translated = self.translate(request, self.vector)
-        #print translated.toString()
-    
+
         if isinstance(request, DoRequest) and isinstance(request.operation, Delete):
             #Since each request might have to be mirrored at some point, it
             #needs to be reversible. Delete requests are not reversible by
@@ -1115,17 +1118,17 @@ class State(object):
         n = vector.get(user)    
         while True:
             if n == 0:
-                return True
-        
-            r = self.requestByUser(user, n - 1)        
-        if r == None:
-            return False
-        if isinstance(r, DoRequest):
-            w = r.vector
-            return w.causallyBefore(vector)
-        else:
-            assocReq = r.associatedRequest(self.log)
-            n = assocReq.vector.get(user)
+                return True        
+            r = self.requestByUser(user, n - 1) 
+            if r == None:
+                return False
+            
+            if isinstance(r, DoRequest):
+                w = r.vector
+                return w.causallyBefore(vector)
+            else:
+                assocReq = r.associatedRequest(self.log)
+                n = assocReq.vector.get(user)
 
 
     def requestByUser(self, user, getIndex):
@@ -1133,12 +1136,13 @@ class State(object):
         @param {Number} user
         @param {Number} index The number of the request to be returned
         '''
-        userReqCount = 0;
+        userReqCount = 0
         for reqIndex, request in enumerate(self.log):
             if self.log[reqIndex].user == user:
                 if(userReqCount == getIndex):
                     return self.log[reqIndex]
-                else: userReqCount += 1
+                else: 
+                    userReqCount += 1
 
 
 class Segment(object):
@@ -1221,9 +1225,9 @@ class Buffer(object):
                 self.segments.splice(segmentIndex, 1)
                 continue
             elif segmentIndex < len(self.segments) - 1 and self.segments[segmentIndex].user == self.segments[segmentIndex+1].user:
-                #Two consecutive segments are from the same user; merge them into one.
-                self.segments[segmentIndex].text += self.segments[segmentIndex+1].text                
-                self.segments.splice(segmentIndex+1, 1)
+                #Two consecutive segments are from the same user; merge them into one.            
+                self.segments[segmentIndex].text += self.segments[segmentIndex+1].text
+                self.segments.pop(segmentIndex+1)
                 continue            
             segmentIndex += 1;
 
@@ -1270,7 +1274,7 @@ class Buffer(object):
         return result
 
 
-    def splice(self, index, remove, insert):
+    def splice(self, index, remove, insert = None):
         '''Like the Array "splice" method, this method allows for removing and
         inserting text in a buffer at a character level.
         @param {Number} index    The offset at which to begin inserting/removing
@@ -1310,7 +1314,8 @@ class Buffer(object):
                         if spliceInsertOffset == None:
                             spliceInsertOffset = segmentIndex                        
                         segment.text = ""
-                        self.segments.splice(segmentIndex, 1)
+                        # splice => pop
+                        self.segments.pop(segmentIndex)
                         segmentIndex -= 1
                 else:
                     #abcdefg

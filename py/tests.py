@@ -52,7 +52,7 @@ def test_1():
     r1_vector = Vector()
     r1 = DoRequest(2, r1_vector, r1_operation)
     executed_r1 = state.execute(r1) 
-    print 'Request 1: %s' % executed_r1.toString()
+    print '\nRequest 1: %s' % executed_r1.toString()
     print ' Vector 1: %s' % state.vector.toString() #this outputs 2:1
     print ' Result 1: %s\n' % state.buffer #this outputs abaccdefghi
     #so far so good
@@ -63,10 +63,16 @@ def test_1():
     r2 = DoRequest(3, r2_vector, r2_operation)
     executed_r2 = state.execute(r2)
     print 'Request 2: %s' % executed_r2.toString()
-    print ' Vector 2: %s' % state.vector.toString() #this outputs 2:1
-    print ' Result 2: %s' % state.buffer #this should output "abaccbcdefghi"
-    #aba-bc-ccdefghi offset 3
-
+    print ' Vector 2: %s' % state.vector.toString() 
+    print ' Result 2: %s\n' % state.buffer #this should output "abaccbcdefghi"
+    #so far so good
+    r3_operation = Delete(0, 5)
+    r3_vector = Vector() 
+    r3 = DoRequest(4, r3_vector, r3_operation)
+    executed_r3 = state.execute(r3)
+    print 'Request 3: %s' % executed_r3.toString()
+    print ' Vector 3: %s' % state.vector.toString() #this outputs 2:1
+    print ' Result 3: %s' % state.buffer #this should output "acbcfghi"
 
     
 test_1()
