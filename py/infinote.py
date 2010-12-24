@@ -30,18 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import sys
 import re
 
-class Operations(object):
-    users = {}
-    
-    @classmethod
-    def set_user(self,value):
-        if value not in self.users:
-            self.users[str(value)] = value
-    
-    @classmethod
-    def get_users(self):
-        return self.users
-
 
 class NoOp(object):
     '''Instantiates a new NoOp operation object.
@@ -86,8 +74,10 @@ class Insert(object):
     requiresCID = True
     
     def __init__(self, position, text):
+        
         self.position = position
         self.text = text.copy()
+        
         
         
     def __repr__(self):
@@ -129,7 +119,7 @@ class Insert(object):
         return self.text.getLength()
         
         
-    def transform(self, other, cid):
+    def transform(self, other, cid = None):
         '''Transforms this Insert operation against another operation, returning the
         resulting operation as a new object.
         @param {Operation} other The operation to transform against.
@@ -264,7 +254,7 @@ class Delete(object):
             #This is a reversible Delete operation. No need to to any processing for recon data.
             return Split(
                 Delete(self.position, self.what.slice(0, at)),
-                Delete(this.position + at, self.what.slice(at))
+                Delete(self.position + at, self.what.slice(at))
             )
         else:
             '''This is a non-reversible Delete operation that might carry recon
@@ -435,18 +425,19 @@ class Delete(object):
 
 
 class Split(object):
-    '''Instantiates a new Split operation object.
+    '''
+    Instantiates a new Split operation object.
     @class An operation which wraps two different operations into a single
     object. This is necessary for example in order to transform a Delete operation 
     against an Insert operation which falls into the range that is to be deleted.
     @param {Operation} first
     @param {Operation} second
-    '''
+    '''    
     requiresCID = True
     
     def __init__(self, first, second):
         self.first = first
-        self.second = second
+        self.second = second        
         
 
     def __repr__(self):
@@ -625,8 +616,15 @@ class DoRequest(object):
         increased. Defaults to 1.
         @type DoRequest
         '''
-        try: amount = int(source)
-        except: amount = 1
+        if not isinstance(amount, int):
+            amount = 1
+        #PY Split(Delete(0, ab), Split(Delete(4, c), Delete(7, de)))
+        #JS Split(Split(Delete(0, ab), Delete(4, c)), Delete(7, de))
+        print 'before_mirror: %s' % self.operation
+        #Split(Insert(0, ab), Split(Insert(2, c), Insert(4, de)))
+        #should be:
+        #Split(Split(Insert(0, ab), Insert(2, c)), Insert(4, de))
+        print 'mirror: %s' % self.operation.mirror()
         return DoRequest(self.user, self.vector.incr(self.user, amount), self.operation.mirror())
 
 
@@ -663,13 +661,10 @@ class UndoRequest(object):
     '''
     def __init__(self, user, vector):
         self.user = user
-        Operations.set_user(user)
         self.vector = vector
 
-
     def __repr__(self):
-        return self.toString()
-        
+        return self.toString()        
 
     def toString(self):
         return 'UndoRequest(%s, %s)' % (self.user, self.vector)
@@ -686,8 +681,11 @@ class UndoRequest(object):
         @type DoRequest
         '''
         sequence = 1
-        index = log.index(self)       
-        if(index == -1): index = log.length - 1
+        try:
+            index = log.index(self)       
+        except ValueError:
+            index = -1
+        if(index == -1): index = len(log) - 1
     
         while index >= 0:
             # === => ==
@@ -696,9 +694,9 @@ class UndoRequest(object):
             if log[index].vector.get(self.user) > self.vector.get(self.user):
                 continue        
             if isinstance(log[index], UndoRequest):
-                sequence += 1;
+                sequence += 1
             else:
-                sequence -= 1;        
+                sequence -= 1      
             if(sequence == 0):
                 return log[index]
             index = index - 1
@@ -928,7 +926,6 @@ class State(object):
                 self.cache[cache_key] = self.translate(request, targetVector, True)        
             #FIXME: translated requests are not cleared from the cache, so this might fill up considerably.
             return self.cache[cache_key]
-
         if isinstance(request, UndoRequest) or isinstance(request, RedoRequest):
             '''If we're dealing with an undo or redo request, we first try to see
             whether a late mirror is possible. For this, we retrieve the
@@ -941,12 +938,27 @@ class State(object):
             match the one from the associated request.
             '''
             mirrorAt = targetVector.copy()
-            mirrorAt[request.user] = assocReq.vector.get(request.user)        
+            #usermod mirrorAt[request.user]
+            mirrorAt.users[str(request.user)] = assocReq.vector.get(request.user)     
             if self.reachable(mirrorAt):
+                print 'REACHABLE'
                 translated = self.translate(assocReq, mirrorAt)
-                mirrorBy = targetVector.get(request.user) - mirrorAt.get(request.user)            
+                #translated
+                #UNDO PY => DoRequest(4, 2:1;3:1, Split(Delete(0, ab), Split(Delete(4, c), Delete(7, de))))
+                #UNDO JS => DoRequest(4, 2:1;3:1, Split(Split(Delete(0, ab), Delete(4, c)), Delete(7, de)))
+                #Split(Delete(0, ab), Delete(4, c)) Delete(7, de)
+                #Split(Delete(7, de),Delete(4, c))  Delete(0, ab)
+                print 'translated: %s' % translated.toString()
+                mirrorBy = targetVector.get(request.user) - mirrorAt.get(request.user)                
                 mirrored = translated.mirror(mirrorBy)
-                return mirrored        
+                print 'mirrored: %s' % mirrored
+                #DoRequest(4, 2:1;3:1;4:1, Split(Insert(0, ab), Split(Insert(2, c), Insert(4, de)))
+                #DoRequest(4, 2:1;3:1;4:1, Split(Split(Insert(0, ab), Insert(2, c)), Insert(4, de)))
+                #mirrored
+                #MIRRORED PY => DoRequest(4, 2:1;3:1;4:1, Split(Insert(0, ab), Split(Insert(2, c), Insert(4, de))))
+                #MIRRORED JS => DoRequest(4, 2:1;3:1;4:1, Split(Split(Insert(0, ab), Insert(2, c)), Insert(4, de)))
+                return mirrored    
+            print 'MIRRORED'
             #If mirrorAt is not reachable, we need to mirror earlier and then
             #perform a translation afterwards, which is attempted next.
         for _user,key in self.vector.users.iteritems():
@@ -1035,8 +1047,8 @@ class State(object):
         '''Checks whether a given request can be executed in the current state.
         @type Boolean
         '''
-        if request == None: return False
-    
+        if request == None: 
+            return False
         if isinstance(request, UndoRequest) or isinstance(request, RedoRequest):
             return request.associatedRequest(self.log) != None
         else:
@@ -1051,29 +1063,27 @@ class State(object):
         has been executed.
         '''
         if request == None:
-              #Pick an executable request from the queue.
+            #Pick an executable request from the queue.
             #for (index = 0 ++ loop)
             for index, value in enumerate(self.request_queue):
                 request = self.request_queue[index]
                 if self.canExecute(request):
                     self.request_queue.splice(index, 1)
                     break
-
         if not self.canExecute(request):
-            
             #Not executable yet - put it (back) in the queue.
             if request != None:
                 self.queue(request)        
             return
-    
+        
         request = request.copy()
-    
         if isinstance(request, UndoRequest) or isinstance(request, RedoRequest):
             #For undo and redo requests, we change their vector to the vector
             #of the original request, but leave the issuing user's component untouched.
             assocReq = request.associatedRequest(self.log)
             newVector = Vector(assocReq.vector)
-            newVector[request.user] = request.vector.get(request.user)
+            #newVector[request.user]
+            newVector.users[str(request.user)] = request.vector.get(request.user)
             request.vector = newVector
         translated = self.translate(request, self.vector)
 

@@ -55,7 +55,7 @@ def test_1():
     print '\nRequest 1: %s' % executed_r1.toString()
     print ' Vector 1: %s' % state.vector.toString() #this outputs 2:1
     print ' Result 1: %s\n' % state.buffer #this outputs abaccdefghi
-    #so far so good
+    #INSERT
     r2_segment = Segment(3, "bc")
     r2_buffer = Buffer([r2_segment])
     r2_operation = Insert(3, r2_buffer)
@@ -65,14 +65,19 @@ def test_1():
     print 'Request 2: %s' % executed_r2.toString()
     print ' Vector 2: %s' % state.vector.toString() 
     print ' Result 2: %s\n' % state.buffer #this should output "abaccbcdefghi"
-    #so far so good
+    #DELETE 
     r3_operation = Delete(0, 5)
     r3_vector = Vector() 
     r3 = DoRequest(4, r3_vector, r3_operation)
     executed_r3 = state.execute(r3)
     print 'Request 3: %s' % executed_r3.toString()
     print ' Vector 3: %s' % state.vector.toString() #this outputs 2:1
-    print ' Result 3: %s' % state.buffer #this should output "acbcfghi"
-
-    
+    print ' Result 3: %s\n' % state.buffer #this should output "acbcfghi"
+    #UNDO
+    r4_vector = Vector() 
+    r4 = UndoRequest(4, r4_vector)
+    executed_r4 = state.execute(r4)
+    print 'Request 4: %s' % executed_r3.toString()
+    print ' Vector 4: %s' % state.vector.toString() #this outputs 2:1
+    print ' Result 4: %s' % state.buffer #this should output "acbcfghi"
 test_1()

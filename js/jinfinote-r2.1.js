@@ -645,6 +645,8 @@ DoRequest.prototype.transform = function(other, cid) {
 DoRequest.prototype.mirror = function(amount) {
     if(typeof(amount) != "number")
         amount = 1;
+    console.log('before_mirror:'+this.operation.toString());
+    console.log('mirror:'+this.operation.mirror().toString());
     return new DoRequest(this.user, this.vector.incr(this.user, amount),
         this.operation.mirror());
 };
@@ -790,8 +792,9 @@ RedoRequest.prototype.associatedRequest = function(log) {
 */
 function _indexOf(array, searchElement, fromIndex)
 {
-    if(array.indexOf)
-        return array.indexOf(searchElement, fromIndex);
+    if(array.indexOf) {   
+        return array.indexOf(searchElement, fromIndex);        
+    }
     else {
         if(typeof(fromIndex) != "number")
             fromIndex = 0;
@@ -801,7 +804,6 @@ function _indexOf(array, searchElement, fromIndex)
             if(array[index] === searchElement)
                 return index;
         }
-        
         return -1;
     }
 }
@@ -1024,22 +1026,22 @@ State.prototype.translate = function(request, targetVector, noCache) {
         // vector, except the component of the issuing user is changed to
         // match the one from the associated request.
         var mirrorAt = targetVector.copy();
-        mirrorAt[request.user] = assocReq.vector.get(request.user);
-        
+        mirrorAt[request.user] = assocReq.vector.get(request.user);        
         if(this.reachable(mirrorAt))
-        {			
-            var translated = this.translate(assocReq, mirrorAt);
-            var mirrorBy = targetVector.get(request.user) -
-                mirrorAt.get(request.user);
+        {
             
+            var translated = this.translate(assocReq, mirrorAt);
+            console.log('translated:' +translated.toString());
+            var mirrorBy = targetVector.get(request.user) - mirrorAt.get(request.user);            
             var mirrored = translated.mirror(mirrorBy);
+            console.log('mirrored:' +mirrored.toString());
             return mirrored;
         }
-        
+        console.log('MIRRORED');
         // If mirrorAt is not reachable, we need to mirror earlier and then
         // perform a translation afterwards, which is attempted next.
     }
-    
+
     for(var _user in this.vector)
     {
         // We now iterate through all users to see how we can translate
@@ -1218,6 +1220,7 @@ State.prototype.execute = function(request) {
     request = request.copy();
     
     if(request instanceof UndoRequest || request instanceof RedoRequest) {
+        console.log('undo');
         // For undo and redo requests, we change their vector to the vector
         // of the original request, but leave the issuing user's component
         // untouched.
@@ -1234,6 +1237,7 @@ State.prototype.execute = function(request) {
         // default, but we can make them reversible.
         this.log.push(request.makeReversible(translated, this));
     } else {
+        console.log('add to log'+request.toString());
         this.log.push(request);
     }
     
