@@ -187,7 +187,6 @@ class Delete(object):
         
     def __init__(self, position, what, recon = None):
         self.position = position
-        print self.position
         self.requiresCID = False        
         
         if isinstance(what, Buffer):
@@ -226,7 +225,6 @@ class Delete(object):
         '''Applies this Delete operation to a buffer.
         @param {Buffer} buffer The buffer to which the operation is to be applied.
         '''
-        print self.position
         buffer.splice(self.position, self.getLength())
 
 
@@ -245,7 +243,7 @@ class Delete(object):
             
 
     def split(self, at):  
-        print 'delete.split %s' % at
+        #print 'delete.split %s' % at
         '''Splits this Delete operation into two Delete operations at the given
         offset. The resulting Split operation will consist of two Delete
         operations which, when combined, affect the same range of text as the
@@ -515,7 +513,7 @@ class Recon(object):
     @param {Recon} [recon] Pre-initialize the Recon object with data from another object.
     '''
     def __init__(self, recon = None):
-        if(recon != None):
+        if(recon != None):            
             self.segments = recon.segments.slice(0)
         else:
             self.segments = []
@@ -611,6 +609,7 @@ class DoRequest(object):
         the request that is to be transformed in case of conflicting operations.
         @type DoRequest
         '''
+        print 'vector.transform cid %s' % type(cid)
         if isinstance(self.operation, NoOp):
             newOperation = NoOp()
         else:   

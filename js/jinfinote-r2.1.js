@@ -176,7 +176,6 @@ Operations.Insert.prototype.mirror = function() {
 Operations.Delete = function(position, what, recon) {
     
     this.position = position;
-    document.write(this.position);
     
     if(what instanceof Buffer)
         this.what = what.copy();
@@ -542,10 +541,12 @@ Operations.Split.prototype.mirror = function() {
 *  another object.
 */
 function Recon(recon) {
-    if(recon)
+    if(recon) {
         this.segments = recon.segments.slice(0);
-    else
+    }
+    else {
         this.segments = new Array();
+    }
 }
 
 Recon.prototype.toString = function() {
@@ -634,6 +635,7 @@ DoRequest.prototype.execute = function(state) {
 *  @type DoRequest
 */
 DoRequest.prototype.transform = function(other, cid) {
+    document.write('vector.transform cid '+typeof(cid)+'<br/>');
     if(this.operation instanceof Operations.NoOp)
         var newOperation = new Operations.NoOp();
     else {
@@ -645,7 +647,6 @@ DoRequest.prototype.transform = function(other, cid) {
         
         var newOperation = this.operation.transform(other.operation, op_cid);
     }
-    
     return new DoRequest(this.user, this.vector.incr(other.user),
         newOperation);
 };
