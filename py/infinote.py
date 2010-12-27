@@ -609,7 +609,10 @@ class DoRequest(object):
         the request that is to be transformed in case of conflicting operations.
         @type DoRequest
         '''
-        print 'vector.transform cid %s' % type(cid)
+        if cid != None:
+            print 'vector.transform cid %s' % cid.toString()
+        else:
+            print 'vector.transform cid %s' % cid
         if isinstance(self.operation, NoOp):
             newOperation = NoOp()
         else:   
@@ -768,16 +771,18 @@ class Vector(object):
     timestring_regex = u'/(\d+):(\d+)/g'    
     
     def __init__(self, value = None):
-        self.users = {}
+        self.users = []
         if type(value).__name__ == 'Vector':
-            for key, value in value.users.iteritems():
-                if key > 0:
-                    self.users[str(key)] = value
+            for index, user in enumerate(value.users):
+                if user['id'] > 0:
+                    self.users[index]['op'] = value
 
         elif isinstance(value, str):
             match = re.match(value, self.timestring_regex)
             while match != None:
-                self.users[str(match[1])] = int(match[2])
+                for index, user in enumerate(value.users):
+                    self.users[index]['id'] = match[1]
+                    self.users[index]['op'] = match[2]
                 match = re.match(value, self.timestring_regex)
       
       
@@ -792,9 +797,9 @@ class Vector(object):
         iteration is stopped at that point and false is returned.
         @type Boolean
         @returns True if the callback function has never returned false; returns False otherwise.
-        '''
-        for key, value in self.users.iteritems():         
-            if callback(int(key), int(value)) == False:
+        '''       
+        for index, user in enumerate(self.users):
+            if callback(user['id'], user['op']) == False:
                 return False   
         return True
 
@@ -878,7 +883,9 @@ class Vector(object):
         result = Vector(self)    
         if by == None:
             by = 1
-        result.users[str(user)] = result.get(user) + by
+        for index, user in enumerate(result.users):
+            if user['id'] == user:                
+                result.users[index]['op'] = result.get(user) + by
         return result
         
 
@@ -999,10 +1006,15 @@ class State(object):
             #request against other users' requests that have contributed to
             #the current state vector.        
             transformAt = targetVector.incr(user, -1)
+            print 'order: %s' % _user
             if transformAt.get(user) >= 0 and self.reachable(transformAt):
-                lastRequest = self.requestByUser(user, transformAt.get(user))     
+                print 'state.translate from user %s' % user
+                lastRequest = self.requestByUser(user, transformAt.get(user))    
+                print lastRequest
                 r1 = self.translate(request, transformAt)
-                r2 = self.translate(lastRequest, transformAt)    
+                print 'state.translate.transformation r1: %s' % r1
+                r2 = self.translate(lastRequest, transformAt)  
+                print 'state.translate.transformation r2: %s' % r2
                 cid_req = None
                 if r1.operation.requiresCID:
                     #For the Insert operation, we need to check whether it is

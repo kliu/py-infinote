@@ -635,7 +635,12 @@ DoRequest.prototype.execute = function(state) {
 *  @type DoRequest
 */
 DoRequest.prototype.transform = function(other, cid) {
-    document.write('vector.transform cid '+typeof(cid)+'<br/>');
+    if (typeof(cid) != 'undefined') {
+        document.write('vector.transform cid '+cid.toString()+'<br/>');
+    }
+    else {
+        document.write('vector.transform cid '+cid+'<br/>');
+    }
     if(this.operation instanceof Operations.NoOp)
         var newOperation = new Operations.NoOp();
     else {
@@ -1046,14 +1051,11 @@ State.prototype.translate = function(request, targetVector, noCache) {
         mirrorAt[request.user] = assocReq.vector.get(request.user);        
         if(this.reachable(mirrorAt))
         {        
-            console.log('state.translate.reachable');
             var translated = this.translate(assocReq, mirrorAt);
             var mirrorBy = targetVector.get(request.user) - mirrorAt.get(request.user);    
-            console.log('mirrorby: '+mirrorBy.toString());
             var mirrored = translated.mirror(mirrorBy);
             return mirrored;
         }
-        console.log('MIRRORED');
         // If mirrorAt is not reachable, we need to mirror earlier and then
         // perform a translation afterwards, which is attempted next.
     }
@@ -1064,7 +1066,6 @@ State.prototype.translate = function(request, targetVector, noCache) {
         // the request to the desired state.
         if(!_user.match(Vector.user_regex))
             continue;
-        
         var user = parseInt(_user);
         
         // The request's issuing user is left out since it is not possible
@@ -1074,15 +1075,17 @@ State.prototype.translate = function(request, targetVector, noCache) {
         
         // We can only transform against requests that have been issued
         // between the translated request's vector and the target vector.
-        if(targetVector.get(user) <= request.vector.get(user))
+        if(targetVector.get(user) <= request.vector.get(user)) {
             continue;
+        }
         
         // Fetch the last request by this user that contributed to the
         // current state vector.
         var lastRequest = this.requestByUser(user, targetVector.get(user) - 1);
+        document.write(lastRequest.toString()+'<br/>');
         if(lastRequest instanceof UndoRequest || lastRequest instanceof RedoRequest)
         {
-            // When the last request was an undo/redo request, we can try to
+              // When the last request was an undo/redo request, we can try to
             // "fold" over it. By just skipping the do/undo or undo/redo pair,
             // we pretend that nothing has changed and increase the state
             // vector.
@@ -1111,16 +1114,18 @@ State.prototype.translate = function(request, targetVector, noCache) {
         // If folding and mirroring is not possible, we can transform this
         // request against other users' requests that have contributed to
         // the current state vector.
-        
         var transformAt = targetVector.incr(user, -1);
+        document.write('order:'+_user+'<br/>');
         if(transformAt.get(user) >= 0 && this.reachable(transformAt))
         {
+            document.write('state.translate from user ' + user+'<br/>');
             
             var lastRequest = this.requestByUser(user, transformAt.get(user));
             
             var r1 = this.translate(request, transformAt);
+            document.write('state.translate.transformation r1: '+r1+'<br/>');
             var r2 = this.translate(lastRequest, transformAt);
-            
+            document.write('state.translate.transformation r2: '+r2+'<br/>');
             var cid_req;
             
             if(r1.operation.requiresCID)
