@@ -74,10 +74,20 @@ def test_1():
     print ' Vector 3: %s' % state.vector.toString() #this outputs 2:1
     print ' Result 3: %s\n' % state.buffer #this should output "acbcfghi"
     #UNDO
-    r4_vector = Vector() 
-    r4 = UndoRequest(4, r4_vector)
-    executed_r4 = state.execute(r4)
-    print 'Request 4: %s' % executed_r3.toString()
-    print ' Vector 4: %s' % state.vector.toString() #this outputs 2:1
-    print ' Result 4: %s' % state.buffer #this should output "acbcfghi"
+    #r4_vector = Vector() 
+    #r4 = UndoRequest(4, r4_vector)
+    #executed_r4 = state.execute(r4)
+    #print 'Request 4: %s' % executed_r3.toString()
+    #print ' Vector 4: %s' % state.vector.toString() #this outputs 2:1
+    #print ' Result 4: %s' % state.buffer #this should output "acbcfghi"
+    #INSERT
+    r5_segment = Segment(5, "BLABLA")
+    r5_buffer = Buffer([r5_segment])
+    r5_operation = Insert(4, r5_buffer)
+    r5_vector = Vector()
+    r5 = DoRequest(5, r5_vector, r5_operation)
+    executed_r5 = state.execute(r5)
+    print 'Request 5: %s' % executed_r5.toString()
+    print ' Vector 5: %s' % state.vector.toString() 
+    print ' Result 5: %s\n' % state.buffer #this should output "abaccbcdefghi"
 test_1()

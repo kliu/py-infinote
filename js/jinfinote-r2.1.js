@@ -176,6 +176,7 @@ Operations.Insert.prototype.mirror = function() {
 Operations.Delete = function(position, what, recon) {
     
     this.position = position;
+    document.write(this.position);
     
     if(what instanceof Buffer)
         this.what = what.copy();
@@ -233,6 +234,7 @@ Operations.Delete.prototype.getLength = function() {
 *  @type Operations.Split
 */
 Operations.Delete.prototype.split = function(at) {
+    //document.write('delete.split' + at+'<br/>');
     if(this.isReversible())
     {
         // This is a reversible Delete operation. No need to to any
@@ -245,6 +247,7 @@ Operations.Delete.prototype.split = function(at) {
         // This is a non-reversible Delete operation that might carry recon
         // data. We need to split that data accordingly between the two new
         // components.
+
         var recon1 = new Recon();
         var recon2 = new Recon();
         
@@ -258,7 +261,6 @@ Operations.Delete.prototype.split = function(at) {
                         this.recon.segments[index].buffer)
                 );
         }
-        
         return new Operations.Split(
             new Operations.Delete(this.position, at, recon1),
             new Operations.Delete(this.position + at, this.what - at, recon2)
@@ -341,8 +343,9 @@ Operations.Delete.prototype.merge = function(other) {
 *  @param {Operation} [cid]
 */
 Operations.Delete.prototype.transform = function(other, cid) {
-    if(other instanceof Operations.NoOp)
+    if(other instanceof Operations.NoOp) {
         return new Operations.Delete(this.position, this.what, this.recon);
+    }
     
     if(other instanceof Operations.Split) {
         // We transform against the first component of the split operation
@@ -362,9 +365,11 @@ Operations.Delete.prototype.transform = function(other, cid) {
     
     var pos1 = this.position;
     var len1 = this.getLength();
+    //document.write(len1);
     
     var pos2 = other.position;
     var len2 = other.getLength();
+    //document.write(len2);
     
     if(other instanceof Operations.Insert)
     {
@@ -374,6 +379,8 @@ Operations.Delete.prototype.transform = function(other, cid) {
             return new Operations.Delete(pos1 + len2, this.what, this.recon);
         if(pos2 > pos1 && pos2 < pos1 + len1)
         {
+            //pos2=3,pos1=0
+            //document.write('pos2:'+pos2+',pos1:'+pos1+'<br/>');
             var result = this.split(pos2 - pos1);
             result.second.position += len2;
             return result;
@@ -381,8 +388,9 @@ Operations.Delete.prototype.transform = function(other, cid) {
     } else if(other instanceof Operations.Delete) {
         if(pos1 + len1 <= pos2)
             return new Operations.Delete(pos1, this.what, this.recon);
-        if(pos1 >= pos2 + len2)
+        if(pos1 >= pos2 + len2) {
             return new Operations.Delete(pos1 - len2, this.what, this.recon);
+        }
         if(pos2 <= pos1 && pos2 + len2 >= pos1 + len1) {
             /*     1XXXXX|
             * 2-------------|
@@ -486,6 +494,8 @@ Operations.Split.prototype.toHTML = function() {
 Operations.Split.prototype.apply = function(buffer) {
     this.first.apply(buffer);
     var transformedSecond = this.second.transform(this.first);
+    console.log('TRANSFORM:'+transformedSecond.toString());
+    console.log(buffer.toString());
     transformedSecond.apply(buffer);
 };
 
@@ -497,16 +507,20 @@ Operations.Split.prototype.cid = function() {};
 *  @param {Operation} [cid]
 */
 Operations.Split.prototype.transform = function(other, cid) {
+    console.log('CID: ' + typeof(cid));
     if(cid == this || cid == other)
         return new Operations.Split(
             this.first.transform(other, (cid == this ? this.first : other)),
             this.second.transform(other, (cid == this ? this.second : other))
         );
-    else
+    else {
+        console.log('FUBAAAAAAAAAR');
+        console.log(this.first);
         return new Operations.Split(
             this.first.transform(other),
             this.second.transform(other)
         );
+    }
 };
 
 /** Mirrors this Split operation. This is done by transforming the second
@@ -714,9 +728,11 @@ UndoRequest.prototype.associatedRequest = function(log) {
     
     if(index == -1)
         index = log.length - 1;
+    console.log(index);
     
     for(; index >= 0; index--)
     {
+        
         if(log[index] === this || log[index].user != this.user)
             continue;
         if(log[index].vector.get(this.user) > this.vector.get(this.user))
@@ -1028,13 +1044,12 @@ State.prototype.translate = function(request, targetVector, noCache) {
         var mirrorAt = targetVector.copy();
         mirrorAt[request.user] = assocReq.vector.get(request.user);        
         if(this.reachable(mirrorAt))
-        {
-            
+        {        
+            console.log('state.translate.reachable');
             var translated = this.translate(assocReq, mirrorAt);
-            console.log('translated:' +translated.toString());
-            var mirrorBy = targetVector.get(request.user) - mirrorAt.get(request.user);            
+            var mirrorBy = targetVector.get(request.user) - mirrorAt.get(request.user);    
+            console.log('mirrorby: '+mirrorBy.toString());
             var mirrored = translated.mirror(mirrorBy);
-            console.log('mirrored:' +mirrored.toString());
             return mirrored;
         }
         console.log('MIRRORED');

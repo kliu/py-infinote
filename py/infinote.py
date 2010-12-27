@@ -105,9 +105,9 @@ class Insert(object):
         @returns The operation that is to be transformed.
         @type Operations.Insert
         '''
-        if(self.position < other.position):
+        if self.position < other.position:
             return other
-        if(self.position > other.position):
+        if self.position > other.position:
             return self
             
 
@@ -147,20 +147,20 @@ class Insert(object):
         str1 = self.text
         pos2 = self.position
     
-        if isinstance(other, Insert):            
+        if isinstance(other, Insert):   
             str2 = other.text      
-            if(pos1 < pos2 or (pos1 == pos2 and cid == other)):
+            if pos1 < pos2 or (pos1 == pos2 and cid == other):
                 return Insert(pos1, str1)
-            if(pos1 > pos2 or (pos1 == pos2 and cid == self)):
+            if pos1 > pos2 or (pos1 == pos2 and cid == self):
                 return Insert(pos1 + str2.getLength(), str1)
         elif isinstance(other, Delete): 
             len2 = other.getLength()
         
-            if(pos1 >= pos2 + len2):
+            if pos1 >= pos2 + len2:
                 return Insert(pos1 - len2, str1)
-            if(pos1 < pos2):
+            if pos1 < pos2:
                 return Insert(pos1, str1)
-            if(pos1 >= pos2 and pos1 < pos2 + len2):
+            if pos1 >= pos2 and pos1 < pos2 + len2:
                 return Insert(pos2, str1)
                 
 
@@ -184,10 +184,11 @@ class Delete(object):
     @param what The data to be removed. This can be either a numeric value
     or a Buffer object.
     '''
-    
+        
     def __init__(self, position, what, recon = None):
         self.position = position
-        self.requiresCID = False
+        print self.position
+        self.requiresCID = False        
         
         if isinstance(what, Buffer):
             self.what = what.copy()
@@ -225,6 +226,7 @@ class Delete(object):
         '''Applies this Delete operation to a buffer.
         @param {Buffer} buffer The buffer to which the operation is to be applied.
         '''
+        print self.position
         buffer.splice(self.position, self.getLength())
 
 
@@ -243,6 +245,7 @@ class Delete(object):
             
 
     def split(self, at):  
+        print 'delete.split %s' % at
         '''Splits this Delete operation into two Delete operations at the given
         offset. The resulting Split operation will consist of two Delete
         operations which, when combined, affect the same range of text as the
@@ -264,10 +267,17 @@ class Delete(object):
             recon2 = Recon()
         
             for index in self.recon.segments:
-                if(self.recon.segments[index].offset < at):
+                if self.recon.segments[index].offset < at:
                     recon1.segments.push(self.recon.segments[index])
                 else:
-                    recon2.segments.push(ReconSegment(self.recon.segments[index].offset - at, self.recon.segments[index].buffer))        
+                    recon2.segments.push(ReconSegment(self.recon.segments[index].offset - at, self.recon.segments[index].buffer))  
+        #print Split(Delete(self.position, at, recon1), Delete(self.position + at, self.what - at, recon2))
+        #Python
+        #Split(Delete(0, 2), Delete(2, 3))
+        #Split(Delete(4, 1), Delete(5, 2))
+        #JS
+        #Split(Delete(0, 3), Delete(3, 2))
+        #Split(Delete(0, 2), Delete(2, 1))
         return Split(Delete(self.position, at, recon1), Delete(self.position + at, self.what - at, recon2))
         
 
@@ -348,27 +358,31 @@ class Delete(object):
     
         pos1 = self.position
         len1 = self.getLength()
+        #print len1
     
         pos2 = other.position
         len2 = other.getLength()
-    
+        #print len2
+        
         if isinstance(other,Insert):
-            if (pos2 >= pos1 + len1):
+            if pos2 >= pos1 + len1:
                 return Delete(pos1, self.what, self.recon)
-            if(pos2 <= pos1):
+            if pos2 <= pos1:
                 return Delete(pos1 + len2, self.what, self.recon)
-            if pos2 > pos1 and pos2 < (pos1 + len1):
+            if pos2 > pos1 and pos2 < pos1 + len1:
+                #pos2=2,pos1=0
+                #print 'pos2:%s,pos1:%s' % (pos2, pos1)
                 result = self.split(pos2 - pos1)
                 result.second.position += len2
                 return result
             
     
         elif isinstance(other,Delete): 
-            if (pos1 + len1) <= pos2:
+            if pos1 + len1 <= pos2:
                 return Delete(pos1, self.what, self.recon)
-            if (pos1 >= pos2) + len2:
+            if pos1 >= pos2 + len2:
                 return Delete(pos1 - len2, self.what, self.recon)
-            if (pos2 <= pos1) and (pos2 + len2) >= (pos1 + len1):
+            if pos2 <= pos1 and pos2 + len2 >= pos1 + len1:
                 '''     1XXXXX|
                 2-------------|
                 
@@ -382,7 +396,7 @@ class Delete(object):
                     newData = 0
                 newRecon = self.recon.update(0,other.what.slice(pos1 - pos2, pos1 - pos2 + len1) )
                 return Delete(pos2, newData, newRecon)
-            if (pos2 <= pos1 and pos2 + len2 < pos1 + len1):
+            if pos2 <= pos1 and pos2 + len2 < pos1 + len1:
                 '''   1XXXX----|
                 2--------|                 
                 The first part of this operation falls within the range of another.
@@ -391,7 +405,7 @@ class Delete(object):
                 result.second.position = pos2
                 result.second.recon = self.recon.update(0,other.what.slice(pos1 - pos2) )
                 return result.second
-            if(pos2 > pos1 and pos2 + len2 >= pos1 + len1):
+            if pos2 > pos1 and pos2 + len2 >= pos1 + len1:
                 ''' 1----XXXXX|
                     2--------|
                 The second part of this operation falls within the range of another.
@@ -399,7 +413,7 @@ class Delete(object):
                 result = self.split(pos2 - pos1)
                 result.first.recon = self.recon.update(result.first.getLength(), other.what.slice(0, pos1 + len1 - pos2) )
                 return result.first
-            if(pos2 > pos1 and pos2 + len2 < pos1 + len1):
+            if pos2 > pos1 and pos2 + len2 < pos1 + len1:
                 '''1-----XXXXXX---|
                    2------|
                 Another operation falls completely within the range of this operation. We remove that part.
@@ -474,11 +488,12 @@ class Split(object):
         @param {Operation} [cid]
         '''
         if cid == self or cid == other:
-            if cid == self:
+            if cid == self:    
                 return Split(self.first.transform(other, self.first), self.second.transform(other, self.second))
             else:
                 return Split(self.first.transform(other, other), self.second.transform(other, other))
         else:
+            #OPERATIONS SHOULD NOT GO THROUGH THIS
             return Split(self.first.transform(other),self.second.transform(other))
 
 
@@ -600,9 +615,9 @@ class DoRequest(object):
             newOperation = NoOp()
         else:   
             op_cid = None
-            if(cid == self):
+            if cid == self:
                 op_cid = self.operation
-            if(cid == other):
+            if cid == other:
                 op_cid = other.operation
         
             newOperation = self.operation.transform(other.operation, op_cid)
@@ -620,11 +635,9 @@ class DoRequest(object):
             amount = 1
         #PY Split(Delete(0, ab), Split(Delete(4, c), Delete(7, de)))
         #JS Split(Split(Delete(0, ab), Delete(4, c)), Delete(7, de))
-        print 'before_mirror: %s' % self.operation
         #Split(Insert(0, ab), Split(Insert(2, c), Insert(4, de)))
         #should be:
         #Split(Split(Insert(0, ab), Insert(2, c)), Insert(4, de))
-        print 'mirror: %s' % self.operation.mirror()
         return DoRequest(self.user, self.vector.incr(self.user, amount), self.operation.mirror())
 
 
@@ -633,7 +646,7 @@ class DoRequest(object):
         component by the given amount, which must be a multiple of 2.
         @type DoRequest
         '''
-        if(amount % 2 == 1):
+        if amount % 2 == 1:
             raise 'Fold amounts must be multiples of 2.'
         return DoRequest(self.user, self.vector.incr(user, amount), self.operation)
 
@@ -685,7 +698,8 @@ class UndoRequest(object):
             index = log.index(self)       
         except ValueError:
             index = -1
-        if(index == -1): index = len(log) - 1
+        if index == -1: 
+            index = len(log) - 1
     
         while index >= 0:
             # === => ==
@@ -697,7 +711,7 @@ class UndoRequest(object):
                 sequence += 1
             else:
                 sequence -= 1      
-            if(sequence == 0):
+            if sequence == 0:
                 return log[index]
             index = index - 1
 
@@ -941,24 +955,20 @@ class State(object):
             #usermod mirrorAt[request.user]
             mirrorAt.users[str(request.user)] = assocReq.vector.get(request.user)     
             if self.reachable(mirrorAt):
-                print 'REACHABLE'
                 translated = self.translate(assocReq, mirrorAt)
                 #translated
                 #UNDO PY => DoRequest(4, 2:1;3:1, Split(Delete(0, ab), Split(Delete(4, c), Delete(7, de))))
                 #UNDO JS => DoRequest(4, 2:1;3:1, Split(Split(Delete(0, ab), Delete(4, c)), Delete(7, de)))
                 #Split(Delete(0, ab), Delete(4, c)) Delete(7, de)
                 #Split(Delete(7, de),Delete(4, c))  Delete(0, ab)
-                print 'translated: %s' % translated.toString()
-                mirrorBy = targetVector.get(request.user) - mirrorAt.get(request.user)                
+                mirrorBy = targetVector.get(request.user) - mirrorAt.get(request.user)
                 mirrored = translated.mirror(mirrorBy)
-                print 'mirrored: %s' % mirrored
                 #DoRequest(4, 2:1;3:1;4:1, Split(Insert(0, ab), Split(Insert(2, c), Insert(4, de)))
                 #DoRequest(4, 2:1;3:1;4:1, Split(Split(Insert(0, ab), Insert(2, c)), Insert(4, de)))
                 #mirrored
                 #MIRRORED PY => DoRequest(4, 2:1;3:1;4:1, Split(Insert(0, ab), Split(Insert(2, c), Insert(4, de))))
                 #MIRRORED JS => DoRequest(4, 2:1;3:1;4:1, Split(Split(Insert(0, ab), Insert(2, c)), Insert(4, de)))
                 return mirrored    
-            print 'MIRRORED'
             #If mirrorAt is not reachable, we need to mirror earlier and then
             #perform a translation afterwards, which is attempted next.
         for _user,key in self.vector.users.iteritems():
@@ -1306,8 +1316,8 @@ class Buffer(object):
                 #This segment is part of the region to splice.                
                 #Store the text that this splice operation removes to adjust the
                 #splice offset correctly later on.
-                #slice
-                removedText = segment.text[spliceIndex:(spliceIndex + spliceCount)]                
+                #[:]slice
+                removedText = segment.text[spliceIndex:(spliceIndex + spliceCount)]
                 if spliceIndex == 0:
                     #abcdefg
                     #  ^        We're splicing at the beginning of a segment                    
@@ -1316,7 +1326,7 @@ class Buffer(object):
                         #^---^    Remove a part at the beginning                        
                         if spliceInsertOffset == None:
                             spliceInsertOffset = segmentIndex
-                        #slice => [:]
+                        #SLICE => [:]
                         segment.text = segment.text[(spliceIndex + spliceCount):]
                     else:
                         #abcdefg
