@@ -348,7 +348,7 @@ class Delete(object):
                 transformFirst = self.transform(other.first, other.first)        
             #The second part of the split operation is transformed against its first part.
             newSecond = other.second.transform(other.first) 
-            if cid == this:
+            if cid == self:
                 transformSecond = transformFirst.transform(newSecond,transformFirst)
             else:
                 transformSecond = transformFirst.transform(newSecond,newSecond)
@@ -767,20 +767,22 @@ class Vector(object):
     @param [value] Pre-initialize the vector with existing values. This can be
     a Vector object, a generic Object with numeric properties, or a string of the form "1:2;3:4;5:6".
     '''
-    user_regex = r'^\d+$'
     timestring_regex = u'/(\d+):(\d+)/g'    
     
     def __init__(self, value = None):
         self.users = []
         if type(value).__name__ == 'Vector':
-            for index, user in enumerate(value.users):
-                if user['id'] > 0:
-                    self.users[index]['op'] = value
+            found = False
+            for index, _user in enumerate(value.users):
+                if _user['id'] > 0:
+                    if index in self.users:
+                        self.users[index] = {'id':_user['id'],'op':_user['op']}
+                    else: self.users.append({'id':_user['id'],'op':_user['op']})
 
         elif isinstance(value, str):
             match = re.match(value, self.timestring_regex)
             while match != None:
-                for index, user in enumerate(value.users):
+                for index, _user in enumerate(value.users):
                     self.users[index]['id'] = match[1]
                     self.users[index]['op'] = match[2]
                 match = re.match(value, self.timestring_regex)
@@ -798,20 +800,20 @@ class Vector(object):
         @type Boolean
         @returns True if the callback function has never returned false; returns False otherwise.
         '''       
-        for index, user in enumerate(self.users):
-            if callback(user['id'], user['op']) == False:
+        for index, _user in enumerate(self.users):
+            if callback(_user['id'], _user['op'], index) == False:
                 return False   
         return True
 
 
-    def toString(self):            
+    def toString(self):  
         '''Returns this vector as a string of the form "1:2;3:4;5:6"
         @type String
         '''
         components = []
-        def Func(u, v):
-            if(v > 0):                
-                components.append("%s:%s" % (u,v))    
+        def Func(uid, op, index):
+            if(op > 0):                
+                components.append("%s:%s" % (uid,op))    
         self.eachUser(Func)
         components.sort()   
         return ';'.join(components)
@@ -824,8 +826,8 @@ class Vector(object):
         @param {Vector} other
         '''
         result = Vector(self)
-        def Func(u, v):
-            result[u] = result.get(u) + v        
+        def Func(uid, op, index):
+            result.users[index]= {'id':uid,'op':result.get(uid) + op}
         other.eachUser(Func)
         return result
 
@@ -839,8 +841,9 @@ class Vector(object):
         @param {Number} user Index of the component to be returned
         '''
         # != None
-        if str(user) in self.users:
-            return self.users[str(user)]
+        for index, _user in enumerate(self.users):
+            if _user['id'] == user and _user['op'] != None:
+                return _user['op']
         else:
             return 0
 
@@ -851,8 +854,8 @@ class Vector(object):
         @param {Vector} other The vector to compare to
         @type Boolean
         '''
-        def Func(u, v):
-            return v <= other.get(u)
+        def Func(uid, op, index):
+            return op <= other.get(uid)
         return self.eachUser(Func)
 
 
@@ -863,12 +866,12 @@ class Vector(object):
         @param {Vector} other The vector to compare to
         @type Boolean
         '''
-        def Func1(u, v):
-            return other.get(u) == v        
+        def Func1(uid, op, index):
+            return other.get(uid) == op        
         eq1 = self.eachUser(Func1)    
         #this = self
-        def Func2(u, v):
-            return self.get(u) == v
+        def Func2(uid, op, index):
+            return self.get(uid) == op
         eq2 = other.eachUser(Func2)
         return eq1 and eq2
 
@@ -883,9 +886,14 @@ class Vector(object):
         result = Vector(self)    
         if by == None:
             by = 1
-        for index, user in enumerate(result.users):
-            if user['id'] == user:                
-                result.users[index]['op'] = result.get(user) + by
+        found = False
+        for index, _user in enumerate(result.users):
+            if _user['id'] == user: 
+                found = True
+                result.users[index] = {'id':_user['id'],'op':result.get(user) + by}
+        if not found:
+            result.users.append({'id':user,'op':result.get(user) + by})
+            
         return result
         
 
@@ -897,11 +905,11 @@ class Vector(object):
         @type Vector
         '''
         result = v1.copy()  
-        def Func(u, v):
-            val1 = v1.get(u)
-            val2 = v2.get(u)
+        def Func(uid, op, index):
+            val1 = v1.get(uid)
+            val2 = v2.get(uid)
             if val1 < val2:
-                result[u] = val2
+                result.users[index] = {'id':uid,'op': val2}
             #else:
                 #result[u] = val1
                 #pass
@@ -959,7 +967,18 @@ class State(object):
             '''
             mirrorAt = targetVector.copy()
             #usermod mirrorAt[request.user]
-            mirrorAt.users[str(request.user)] = assocReq.vector.get(request.user)     
+            #mirrorAt.users[str(request.user)] = assocReq.vector.get(request.user)     
+            #users
+            found = False
+            for index, _user in enumerate(mirrorAt.users):
+                if _user['id'] == request.user:
+                    found = True
+                    mirrorAt.users[index]['op'] = assocReq.vector.get(request.user)   
+            if not found:
+                mirrorAt.users.append({'id':_user['id'],'op': assocReq.vector.get(request.user)})
+            
+
+                
             if self.reachable(mirrorAt):
                 translated = self.translate(assocReq, mirrorAt)
                 #translated
@@ -977,44 +996,42 @@ class State(object):
                 return mirrored    
             #If mirrorAt is not reachable, we need to mirror earlier and then
             #perform a translation afterwards, which is attempted next.
-        for _user,key in self.vector.users.iteritems():
+            
+        for index, _user in enumerate(self.vector.users):
             #We now iterate through all users to see how we can translate the request to the desired state. 
-            user = int(_user)        
             #The request's issuing user is left out since it is not possible to transform or fold a request along its own user
-            if user == request.user:
-                continue        
+            if _user['id'] == request.user:
+                continue
             #We can only transform against requests that have been issued
             #between the translated request's vector and the target vector.
-            if targetVector.get(user) <= request.vector.get(user): 
-                continue     
+            #PROBLABLY HERE
+            if targetVector.get(_user['id']) <= request.vector.get(_user['id']): 
+                continue 
             #Fetch the last request by this user that contributed to the current state vector.
-            lastRequest = self.requestByUser(user, targetVector.get(user) - 1) 
+            lastRequest = self.requestByUser(_user['id'], targetVector.get(_user['id']) - 1) 
             if isinstance(lastRequest, UndoRequest) or isinstance(lastRequest, RedoRequest):
                 #When the last request was an undo/redo request, we can try to
                 #"fold" over it. By just skipping the do/undo or undo/redo pair,
                 #we pretend that nothing has changed and increase the state vector.             
-                foldBy = targetVector.get(user) - lastRequest.associatedRequest(self.log).vector.get(user)            
-                if(targetVector.get(user) >= foldBy):
-                    foldAt = targetVector.incr(user, -foldBy)                
+                foldBy = targetVector.get(_user['id']) - lastRequest.associatedRequest(self.log).vector.get(_user['id'])            
+                if(targetVector.get(_user['id']) >= foldBy):
+                    foldAt = targetVector.incr(_user['id'], -foldBy)                
                     #We need to make sure that the state we're trying to fold at is reachable and that the request 
                     #we're translating was issued before it.                
                     if self.reachable(foldAt) and request.vector.causallyBefore(foldAt):
                         translated = self.translate(request, foldAt)
-                        folded = translated.fold(user, foldBy)                    
+                        folded = translated.fold(_user['id'], foldBy)                    
                         return folded
             #If folding and mirroring is not possible, we can transform this
             #request against other users' requests that have contributed to
-            #the current state vector.        
-            transformAt = targetVector.incr(user, -1)
-            print 'order: %s' % _user
-            if transformAt.get(user) >= 0 and self.reachable(transformAt):
-                print 'state.translate from user %s' % user
-                lastRequest = self.requestByUser(user, transformAt.get(user))    
-                print lastRequest
+            #the current state vector. 
+            transformAt = targetVector.incr(_user['id'], -1)
+            if transformAt.get(_user['id']) >= 0 and self.reachable(transformAt):
+                lastRequest = self.requestByUser(_user['id'], transformAt.get(_user['id']))    
                 r1 = self.translate(request, transformAt)
-                print 'state.translate.transformation r1: %s' % r1
+                print 'state.translated r1: %s' % r1
                 r2 = self.translate(lastRequest, transformAt)  
-                print 'state.translate.transformation r2: %s' % r2
+                print 'state.translated r2: %s' % r2
                 cid_req = None
                 if r1.operation.requiresCID:
                     #For the Insert operation, we need to check whether it is
@@ -1076,7 +1093,7 @@ class State(object):
             return request.vector.causallyBefore(self.vector)
             
 
-    def execute(self, request = None):    
+    def execute(self, request = None):   
         '''Executes a request that is executable.
         @param {Request} [request] The request to be executed. If omitted, an
         executable request is picked from the request queue instead.
@@ -1104,10 +1121,11 @@ class State(object):
             assocReq = request.associatedRequest(self.log)
             newVector = Vector(assocReq.vector)
             #newVector[request.user]
-            newVector.users[str(request.user)] = request.vector.get(request.user)
+            for index, _user in enumerate(self.users):
+                if _user['id'] == request.user:
+                    newVector.users[index]['op'] = request.vector.get(request.user)
             request.vector = newVector
         translated = self.translate(request, self.vector)
-
         if isinstance(request, DoRequest) and isinstance(request.operation, Delete):
             #Since each request might have to be mirrored at some point, it
             #needs to be reversible. Delete requests are not reversible by
@@ -1115,7 +1133,6 @@ class State(object):
             self.log.append(request.makeReversible(translated, self))
         else:
             self.log.append(request);
-    
         translated.execute(self)
     
         try:
@@ -1140,8 +1157,8 @@ class State(object):
         @param {Vector} vector
         @type Boolean
         '''
-        def Func(u, v):
-            return self.reachableUser(vector, u)
+        def Func(uid, op, index):
+            return self.reachableUser(vector, uid)
         return self.vector.eachUser(Func)
 
 

@@ -493,8 +493,6 @@ Operations.Split.prototype.toHTML = function() {
 Operations.Split.prototype.apply = function(buffer) {
     this.first.apply(buffer);
     var transformedSecond = this.second.transform(this.first);
-    console.log('TRANSFORM:'+transformedSecond.toString());
-    console.log(buffer.toString());
     transformedSecond.apply(buffer);
 };
 
@@ -506,15 +504,12 @@ Operations.Split.prototype.cid = function() {};
 *  @param {Operation} [cid]
 */
 Operations.Split.prototype.transform = function(other, cid) {
-    console.log('CID: ' + typeof(cid));
     if(cid == this || cid == other)
         return new Operations.Split(
             this.first.transform(other, (cid == this ? this.first : other)),
             this.second.transform(other, (cid == this ? this.second : other))
         );
     else {
-        console.log('FUBAAAAAAAAAR');
-        console.log(this.first);
         return new Operations.Split(
             this.first.transform(other),
             this.second.transform(other)
@@ -665,8 +660,6 @@ DoRequest.prototype.transform = function(other, cid) {
 DoRequest.prototype.mirror = function(amount) {
     if(typeof(amount) != "number")
         amount = 1;
-    console.log('before_mirror:'+this.operation.toString());
-    console.log('mirror:'+this.operation.mirror().toString());
     return new DoRequest(this.user, this.vector.incr(this.user, amount),
         this.operation.mirror());
 };
@@ -734,7 +727,6 @@ UndoRequest.prototype.associatedRequest = function(log) {
     
     if(index == -1)
         index = log.length - 1;
-    console.log(index);
     
     for(; index >= 0; index--)
     {
@@ -1082,7 +1074,7 @@ State.prototype.translate = function(request, targetVector, noCache) {
         // Fetch the last request by this user that contributed to the
         // current state vector.
         var lastRequest = this.requestByUser(user, targetVector.get(user) - 1);
-        document.write(lastRequest.toString()+'<br/>');
+        document.write('Lastrequest:'+lastRequest.toString()+'<br/>');
         if(lastRequest instanceof UndoRequest || lastRequest instanceof RedoRequest)
         {
               // When the last request was an undo/redo request, we can try to
@@ -1118,14 +1110,14 @@ State.prototype.translate = function(request, targetVector, noCache) {
         document.write('order:'+_user+'<br/>');
         if(transformAt.get(user) >= 0 && this.reachable(transformAt))
         {
-            document.write('state.translate from user ' + user+'<br/>');
+            //document.write('state.translate from user ' + user+'<br/>');
             
             var lastRequest = this.requestByUser(user, transformAt.get(user));
             
             var r1 = this.translate(request, transformAt);
-            document.write('state.translate.transformation r1: '+r1+'<br/>');
+            document.write('state.translated r1: '+r1+'<br/>');
             var r2 = this.translate(lastRequest, transformAt);
-            document.write('state.translate.transformation r2: '+r2+'<br/>');
+            document.write('state.translated r2: '+r2+'<br/>');
             var cid_req;
             
             if(r1.operation.requiresCID)
@@ -1241,7 +1233,6 @@ State.prototype.execute = function(request) {
     request = request.copy();
     
     if(request instanceof UndoRequest || request instanceof RedoRequest) {
-        console.log('undo');
         // For undo and redo requests, we change their vector to the vector
         // of the original request, but leave the issuing user's component
         // untouched.
@@ -1258,7 +1249,6 @@ State.prototype.execute = function(request) {
         // default, but we can make them reversible.
         this.log.push(request.makeReversible(translated, this));
     } else {
-        console.log('add to log'+request.toString());
         this.log.push(request);
     }
     
