@@ -48,9 +48,17 @@
     var r5_vector = new Vector();
     var r5 = new DoRequest(5, r5_vector, r5_operation);
     var executed_r5 = state.execute(r5);
-    document.write('Request 2:&nbsp;' + executed_r5.toString() + "<br/>");
-    document.write('&nbsp;&nbsp;Vector 2:&nbsp;' + state.vector.toString() + "<br/>");
-    document.write('&nbsp;&nbsp;Result 2:&nbsp;' + state.buffer + "<br/><br/>"); // outputs "abaccbcdefghi"
+    document.write('Request 5:&nbsp;' + executed_r5.toString() + "<br/>");
+    document.write('&nbsp;&nbsp;Vector 5:&nbsp;' + state.vector.toString() + "<br/>");
+    document.write('&nbsp;&nbsp;Result 5:&nbsp;' + state.buffer + "<br/><br/>"); // outputs "abaccbcdefghi"
+    //REDO
+    var r6_vector = new Vector() 
+    var r6 = new UndoRequest(3, r6_vector)
+    var executed_r6 = state.execute(r6)
+    document.write('Request 6:&nbsp;' + executed_r5.toString() + "<br/>");
+    document.write('&nbsp;&nbsp;Vector 6:&nbsp;' + state.vector.toString() + "<br/>");
+    document.write('&nbsp;&nbsp;Result 6:&nbsp;' + state.buffer + "<br/><br/>"); // outputs "abaccbcdefghi"
+
 </script>
 </head>
 </html>
