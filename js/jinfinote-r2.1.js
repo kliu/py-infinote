@@ -144,13 +144,13 @@ Operations.Insert.prototype.transform = function(other, cid) {
         }
     } else if(other instanceof Operations.Delete) {
         var len2 = other.getLength();
-        
         if(pos1 >= pos2 + len2)
             return new Operations.Insert(pos1 - len2, str1);
         if(pos1 < pos2)
             return new Operations.Insert(pos1, str1);
-        if(pos1 >= pos2 && pos1 < pos2 + len2)
+        if(pos1 >= pos2 && pos1 < pos2 + len2) {
             return new Operations.Insert(pos2, str1);
+        }
     }
 };
 
@@ -233,7 +233,6 @@ Operations.Delete.prototype.getLength = function() {
 *  @type Operations.Split
 */
 Operations.Delete.prototype.split = function(at) {
-    //document.write('delete.split' + at+'<br/>');
     if(this.isReversible())
     {
         // This is a reversible Delete operation. No need to to any
@@ -364,11 +363,10 @@ Operations.Delete.prototype.transform = function(other, cid) {
     
     var pos1 = this.position;
     var len1 = this.getLength();
-    //document.write(len1);
     
     var pos2 = other.position;
     var len2 = other.getLength();
-    //document.write(len2);
+
     
     if(other instanceof Operations.Insert)
     {
@@ -379,7 +377,6 @@ Operations.Delete.prototype.transform = function(other, cid) {
         if(pos2 > pos1 && pos2 < pos1 + len1)
         {
             //pos2=3,pos1=0
-            //document.write('pos2:'+pos2+',pos1:'+pos1+'<br/>');
             var result = this.split(pos2 - pos1);
             result.second.position += len2;
             return result;
@@ -630,12 +627,6 @@ DoRequest.prototype.execute = function(state) {
 *  @type DoRequest
 */
 DoRequest.prototype.transform = function(other, cid) {
-    if (typeof(cid) != 'undefined') {
-        document.write('vector.transform cid '+cid.toString()+'<br/>');
-    }
-    else {
-        document.write('vector.transform cid '+cid+'<br/>');
-    }
     if(this.operation instanceof Operations.NoOp)
         var newOperation = new Operations.NoOp();
     else {
@@ -1074,7 +1065,6 @@ State.prototype.translate = function(request, targetVector, noCache) {
         // Fetch the last request by this user that contributed to the
         // current state vector.
         var lastRequest = this.requestByUser(user, targetVector.get(user) - 1);
-        document.write('Lastrequest:'+lastRequest.toString()+'<br/>');
         if(lastRequest instanceof UndoRequest || lastRequest instanceof RedoRequest)
         {
               // When the last request was an undo/redo request, we can try to
@@ -1107,17 +1097,13 @@ State.prototype.translate = function(request, targetVector, noCache) {
         // request against other users' requests that have contributed to
         // the current state vector.
         var transformAt = targetVector.incr(user, -1);
-        document.write('order:'+_user+'<br/>');
         if(transformAt.get(user) >= 0 && this.reachable(transformAt))
         {
-            //document.write('state.translate from user ' + user+'<br/>');
             
             var lastRequest = this.requestByUser(user, transformAt.get(user));
             
             var r1 = this.translate(request, transformAt);
-            document.write('state.translated r1: '+r1+'<br/>');
             var r2 = this.translate(lastRequest, transformAt);
-            document.write('state.translated r2: '+r2+'<br/>');
             var cid_req;
             
             if(r1.operation.requiresCID)

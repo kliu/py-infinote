@@ -145,7 +145,7 @@ class Insert(object):
            
         pos1 = self.position
         str1 = self.text
-        pos2 = self.position
+        pos2 = other.position
     
         if isinstance(other, Insert):   
             str2 = other.text      
@@ -155,7 +155,6 @@ class Insert(object):
                 return Insert(pos1 + str2.getLength(), str1)
         elif isinstance(other, Delete): 
             len2 = other.getLength()
-        
             if pos1 >= pos2 + len2:
                 return Insert(pos1 - len2, str1)
             if pos1 < pos2:
@@ -184,10 +183,11 @@ class Delete(object):
     @param what The data to be removed. This can be either a numeric value
     or a Buffer object.
     '''
-        
+    requiresCID = False   
+    
     def __init__(self, position, what, recon = None):
         self.position = position
-        self.requiresCID = False        
+ 
         
         if isinstance(what, Buffer):
             self.what = what.copy()
@@ -243,7 +243,6 @@ class Delete(object):
             
 
     def split(self, at):  
-        #print 'delete.split %s' % at
         '''Splits this Delete operation into two Delete operations at the given
         offset. The resulting Split operation will consist of two Delete
         operations which, when combined, affect the same range of text as the
@@ -269,13 +268,6 @@ class Delete(object):
                     recon1.segments.push(self.recon.segments[index])
                 else:
                     recon2.segments.push(ReconSegment(self.recon.segments[index].offset - at, self.recon.segments[index].buffer))  
-        #print Split(Delete(self.position, at, recon1), Delete(self.position + at, self.what - at, recon2))
-        #Python
-        #Split(Delete(0, 2), Delete(2, 3))
-        #Split(Delete(4, 1), Delete(5, 2))
-        #JS
-        #Split(Delete(0, 3), Delete(3, 2))
-        #Split(Delete(0, 2), Delete(2, 1))
         return Split(Delete(self.position, at, recon1), Delete(self.position + at, self.what - at, recon2))
         
 
@@ -356,11 +348,9 @@ class Delete(object):
     
         pos1 = self.position
         len1 = self.getLength()
-        #print len1
     
         pos2 = other.position
         len2 = other.getLength()
-        #print len2
         
         if isinstance(other,Insert):
             if pos2 >= pos1 + len1:
@@ -368,8 +358,6 @@ class Delete(object):
             if pos2 <= pos1:
                 return Delete(pos1 + len2, self.what, self.recon)
             if pos2 > pos1 and pos2 < pos1 + len1:
-                #pos2=2,pos1=0
-                #print 'pos2:%s,pos1:%s' % (pos2, pos1)
                 result = self.split(pos2 - pos1)
                 result.second.position += len2
                 return result
@@ -609,10 +597,6 @@ class DoRequest(object):
         the request that is to be transformed in case of conflicting operations.
         @type DoRequest
         '''
-        if cid != None:
-            print 'vector.transform cid %s' % cid.toString()
-        else:
-            print 'vector.transform cid %s' % cid
         if isinstance(self.operation, NoOp):
             newOperation = NoOp()
         else:   
@@ -981,18 +965,8 @@ class State(object):
                 
             if self.reachable(mirrorAt):
                 translated = self.translate(assocReq, mirrorAt)
-                #translated
-                #UNDO PY => DoRequest(4, 2:1;3:1, Split(Delete(0, ab), Split(Delete(4, c), Delete(7, de))))
-                #UNDO JS => DoRequest(4, 2:1;3:1, Split(Split(Delete(0, ab), Delete(4, c)), Delete(7, de)))
-                #Split(Delete(0, ab), Delete(4, c)) Delete(7, de)
-                #Split(Delete(7, de),Delete(4, c))  Delete(0, ab)
                 mirrorBy = targetVector.get(request.user) - mirrorAt.get(request.user)
                 mirrored = translated.mirror(mirrorBy)
-                #DoRequest(4, 2:1;3:1;4:1, Split(Insert(0, ab), Split(Insert(2, c), Insert(4, de)))
-                #DoRequest(4, 2:1;3:1;4:1, Split(Split(Insert(0, ab), Insert(2, c)), Insert(4, de)))
-                #mirrored
-                #MIRRORED PY => DoRequest(4, 2:1;3:1;4:1, Split(Insert(0, ab), Split(Insert(2, c), Insert(4, de))))
-                #MIRRORED JS => DoRequest(4, 2:1;3:1;4:1, Split(Split(Insert(0, ab), Insert(2, c)), Insert(4, de)))
                 return mirrored    
             #If mirrorAt is not reachable, we need to mirror earlier and then
             #perform a translation afterwards, which is attempted next.
@@ -1029,14 +1003,12 @@ class State(object):
             if transformAt.get(_user['id']) >= 0 and self.reachable(transformAt):
                 lastRequest = self.requestByUser(_user['id'], transformAt.get(_user['id']))    
                 r1 = self.translate(request, transformAt)
-                print 'state.translated r1: %s' % r1
                 r2 = self.translate(lastRequest, transformAt)  
-                print 'state.translated r2: %s' % r2
                 cid_req = None
                 if r1.operation.requiresCID:
                     #For the Insert operation, we need to check whether it is
                     #possible to determine which operation is to be transformed.
-                    cid = r1.operation.cid(r2.operation)            
+                    cid = r1.operation.cid(r2.operation)
                     if not cid:
                         #When two requests insert text at the same position,
                         #the transformation result is undefined. We therefore
@@ -1121,9 +1093,13 @@ class State(object):
             assocReq = request.associatedRequest(self.log)
             newVector = Vector(assocReq.vector)
             #newVector[request.user]
-            for index, _user in enumerate(self.users):
+            found = False
+            for index, _user in enumerate(newVector.users):
                 if _user['id'] == request.user:
+                    found = True
                     newVector.users[index]['op'] = request.vector.get(request.user)
+            if not found:
+                newVector.users.append({'id':request.user,'op':request.vector.get(request.user)})
             request.vector = newVector
         translated = self.translate(request, self.vector)
         if isinstance(request, DoRequest) and isinstance(request.operation, Delete):
@@ -1344,7 +1320,7 @@ class Buffer(object):
                 #This segment is part of the region to splice.                
                 #Store the text that this splice operation removes to adjust the
                 #splice offset correctly later on.
-                #[:]slice
+                #[:]SLICE
                 removedText = segment.text[spliceIndex:(spliceIndex + spliceCount)]
                 if spliceIndex == 0:
                     #abcdefg
@@ -1354,7 +1330,7 @@ class Buffer(object):
                         #^---^    Remove a part at the beginning                        
                         if spliceInsertOffset == None:
                             spliceInsertOffset = segmentIndex
-                        #SLICE => [:]
+                        #[:]SLICE 
                         segment.text = segment.text[(spliceIndex + spliceCount):]
                     else:
                         #abcdefg

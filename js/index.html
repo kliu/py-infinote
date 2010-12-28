@@ -36,12 +36,12 @@
     document.write('Request 3:&nbsp;' + executed_r3.toString() + "<br/>");
     document.write('&nbsp;&nbsp;Vector 3:&nbsp;' + state.vector.toString() + "<br/>");
     document.write('&nbsp;&nbsp;Result 3:&nbsp;' + state.buffer + "<br/><br/>"); // outputs "acbcfghi"
-    //var r4_vector = new Vector() 
-    //var r4 = new UndoRequest(4, r4_vector);
-    //var executed_r4 = state.execute(r4);
-    //document.write('<br/>Request 4:&nbsp;' + executed_r4.toString() + "<br/>");
-    //document.write('&nbsp;&nbsp;Vector 4:&nbsp;' + state.vector.toString() + "<br/>");
-    //document.write('&nbsp;&nbsp;Result 4:&nbsp;' + state.buffer + "<br/>"); // outputs "acbcfghi"
+    var r4_vector = new Vector() 
+    var r4 = new UndoRequest(4, r4_vector);
+    var executed_r4 = state.execute(r4);
+    document.write('Request 4:&nbsp;' + executed_r4.toString() + "<br/>");
+    document.write('&nbsp;&nbsp;Vector 4:&nbsp;' + state.vector.toString() + "<br/>");
+    document.write('&nbsp;&nbsp;Result 4:&nbsp;' + state.buffer + "<br/><br/>"); // outputs "acbcfghi"
     var r5_segment = new Segment(5, "BLABLA");
     var r5_buffer = new Buffer([r5_segment]);
     var r5_operation = new Operations.Insert(4, r5_buffer);
