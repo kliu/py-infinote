@@ -79,7 +79,7 @@ def test_1():
     executed_r4 = state.execute(r4)
     print 'Request 4: %s' % executed_r3.toString()
     print ' Vector 4: %s' % state.vector.toString() #this outputs 2:1
-    print ' Result 4: %s' % state.buffer #this should output "abaccbcdefghi"
+    print ' Result 4: %s\n' % state.buffer #this should output "abaccbcdefghi"
     #INSERT
     r5_segment = Segment(5, "BLABLA")
     r5_buffer = Buffer([r5_segment])

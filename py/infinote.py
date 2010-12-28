@@ -686,20 +686,18 @@ class UndoRequest(object):
             index = -1
         if index == -1: 
             index = len(log) - 1
-    
-        while index >= 0:
+        for i in range(index,0,-1):
             # === => ==
-            if log[index] == self or log[index].user != self.user:
+            if log[i] == self or log[i].user != self.user:
                 continue
-            if log[index].vector.get(self.user) > self.vector.get(self.user):
+            if log[i].vector.get(self.user) > self.vector.get(self.user):
                 continue        
-            if isinstance(log[index], UndoRequest):
+            if isinstance(log[i], UndoRequest):
                 sequence += 1
             else:
                 sequence -= 1      
             if sequence == 0:
-                return log[index]
-            index = index - 1
+                return log[i]
 
 
 class RedoRequest(object):
