@@ -14,6 +14,7 @@ def test_1():
     r1_operation = Insert(2, r1_buffer) 
     r1_vector = Vector()
     r1 = DoRequest(2, r1_vector, r1_operation)
+    print state.canExecute(r1)
     executed_r1 = state.execute(r1) 
     print '\nRequest 1: %s' % executed_r1.toString()
     print ' Vector 1: %s' % state.vector.toString() #this outputs 2:1
@@ -60,5 +61,31 @@ def test_1():
     print 'Request 6: %s' % executed_r6.toString()
     print ' Vector 6: %s' % state.vector.toString() #this outputs 2:1
     print ' Result 6: %s\n' % state.buffer #this should output "abaccbcdefghi"
+    
+    state2 = State()
+    logs = [['i', [1, '', 0, 'D']], ['i', [1, '1:1', 1, 'i']], ['i', [1, '1:2', 2, 't']], ['i', [1, '1:3', 3, ' ']], ['i', [1, '1:4', 4, 'i']], ['i', [1, '1:5', 5, 's']], ['i', [1, '1:6', 6, ' ']], ['i', [1, '1:7', 7, 'e']], 
+            ['i', [1, '1:8', 8, 'e']], ['i', [1, '1:9', 9, 'n']], ['i', [1, '1:10', 10, ' ']], ['i', [1, '1:11', 11, 'te']], ['i', [1, '1:12', 13, 's']], ['i', [1, '1:13', 14, 't']]]
+
+    def _handleInsert(params):     
+        buffer = Buffer([Segment(params[0], params[3])])
+        operation = Insert(params[2], buffer)
+        request = DoRequest(params[0], Vector(params[1]), operation)
+        executedRequest = state2.execute(request)
+
+    def _handleDelete(params):     
+        operation = Delete(params[2], params[3])
+        request = DoRequest(params[0], Vector(params[1]), operation)
+        executedRequest = state2.execute(request)
+
+    for log in logs:
+        if log[0] == 'i':
+            _handleInsert(log[1])
+        elif log[0] == 'd':
+            _handleDelete(log[1])
+        elif log[0] == 'u':
+            _handleUndo(log[1])
+        
+
+    print ' Result 6: %s\n' % state2.buffer #this should output "dit is een test"
     
 test_1()

@@ -1,6 +1,25 @@
 '''
 Copyright (c) 2009 Simon Veith <simon@jinfinote.com>
-Python port of Simon Veith's jinfinote implementation, written for the HWIOS project
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+Py-Infinote is a python port of JInfinote, and was developed for the HWIOS project
 
 Copyright (c) Contributors, http://hwios.org/
 See CONTRIBUTORS for a full list of copyright holders.
@@ -29,6 +48,63 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 '''
 import sys
 import re
+
+
+class InfinoteEditor(object):
+    
+    def __init__(self):
+        self.log = []
+        self._state = State()
+
+    def try_insert(self, params):
+        #user, text
+        print params
+        segment = Segment(params[0], params[3])
+        buffer = Buffer([segment])
+        #position, buffer
+        operation = Insert(params[2], buffer)
+        #user, vector
+        request = DoRequest(params[0], Vector(params[1]), operation)
+        print self._state.canExecute(request) 
+        executedRequest = self._state.execute(request)
+        self.log.append(["i",tuple(params)])
+        
+
+    def try_delete(self, params):
+        operation = Delete(params[2], params[3])
+        #user, vector, operation
+        request = DoRequest(params[0], Vector(params[1]), operation)
+        print self._state.canExecute(request) 
+        executedRequest = self._state.execute(request) 
+        self.log.append(["d",tuple(params)])
+        
+        
+    def try_undo(self, params):
+        request = UndoRequest(params[0], self._state.vector)
+        print self._state.canExecute(request)  
+        executedRequest = self._state.execute(request)
+        self.log.append(["u",tuple(params)])  
+        
+            
+    def sync(self):
+        for log in self.log:
+            if log[0] == 'i': 
+                self.try_insert(log[1])
+            elif log[0] =='d':
+                self.try_delete(log[1])
+            elif log[0] == 'u':
+                self.try_undo(log[1])
+                
+                
+    def get_state(self):
+        return self._state.buffer.toString()
+                
+                
+class BufferSpliceError(Exception):
+    def __init__(self, message, Errors = None):
+
+        Exception.__init__(self, message)
+        self.Errors = Errors          
 
 
 class NoOp(object):
@@ -316,7 +392,7 @@ class Delete(object):
         '''
         if self.isReversible():
             if not other.isReversible():
-                raise 'Cannot merge reversible operations with non-reversible ones'
+                raise Exception('Cannot merge reversible operations with non-reversible ones')
             newBuffer = self.what.copy()            
             newBuffer.splice(newBuffer.getLength(), 0, other.what)
             return Delete(self.position, newBuffer)
@@ -633,7 +709,7 @@ class DoRequest(object):
         @type DoRequest
         '''
         if amount % 2 == 1:
-            raise 'Fold amounts must be multiples of 2.'
+            raise Exception('Fold amounts must be multiples of 2.')
         return DoRequest(self.user, self.vector.incr(user, amount), self.operation)
 
 
@@ -749,10 +825,11 @@ class Vector(object):
     @param [value] Pre-initialize the vector with existing values. This can be
     a Vector object, a generic Object with numeric properties, or a string of the form "1:2;3:4;5:6".
     '''
-    timestring_regex = u'/(\d+):(\d+)/g'    
+    vector_time = re.compile(r'^(?P<id>\d+):(?P<op>\d+)$') 
     
     def __init__(self, value = None):
         self.users = []
+        
         if type(value).__name__ == 'Vector':
             found = False
             for index, _user in enumerate(value.users):
@@ -762,13 +839,20 @@ class Vector(object):
                     else: self.users.append({'id':_user['id'],'op':_user['op']})
 
         elif isinstance(value, str):
-            match = re.match(value, self.timestring_regex)
-            while match != None:
-                for index, _user in enumerate(value.users):
-                    self.users[index]['id'] = match[1]
-                    self.users[index]['op'] = match[2]
-                match = re.match(value, self.timestring_regex)
-      
+            pairs = value.split(';')
+            if value != '':
+                for pair in pairs:
+                    match = self.vector_time.match(pair)
+                    if match != None:
+                        found = False
+                        user_op = match.groupdict()
+                        for index, _user in enumerate(self.users):
+                            if _user['id'] == user_op['id']:
+                                found = True
+                                self.users[index]['op'] = user_op['op']
+                        if not found:
+                            self.users.append({'id':user_op['id'],'op':user_op['op']})
+                            
       
     def __repr__(self):
         return self.toString()
@@ -1304,7 +1388,7 @@ class Buffer(object):
         @param {Buffer} [insert] Buffer to insert
         '''
         if index > self.getLength():
-            raise 'Buffer splice operation out of bounds'
+            raise BufferSpliceError('Buffer splice operation out of bounds')
     
         segmentIndex = 0
         segmentOffset = 0
