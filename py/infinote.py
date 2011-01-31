@@ -58,32 +58,31 @@ class InfinoteEditor(object):
 
     def try_insert(self, params):
         #user, text
-        print params
         segment = Segment(params[0], params[3])
         buffer = Buffer([segment])
         #position, buffer
         operation = Insert(params[2], buffer)
         #user, vector
         request = DoRequest(params[0], Vector(params[1]), operation)
-        print self._state.canExecute(request) 
-        executedRequest = self._state.execute(request)
-        self.log.append(["i",tuple(params)])
+        if self._state.canExecute(request):
+            executedRequest = self._state.execute(request)
+            self.log.append(["i",tuple(params)])
         
 
     def try_delete(self, params):
         operation = Delete(params[2], params[3])
         #user, vector, operation
         request = DoRequest(params[0], Vector(params[1]), operation)
-        print self._state.canExecute(request) 
-        executedRequest = self._state.execute(request) 
-        self.log.append(["d",tuple(params)])
+        if self._state.canExecute(request):
+            executedRequest = self._state.execute(request) 
+            self.log.append(["d",tuple(params)])
         
         
     def try_undo(self, params):
         request = UndoRequest(params[0], self._state.vector)
-        print self._state.canExecute(request)  
-        executedRequest = self._state.execute(request)
-        self.log.append(["u",tuple(params)])  
+        if self._state.canExecute(request):
+            executedRequest = self._state.execute(request)
+            self.log.append(["u",tuple(params)])  
         
             
     def sync(self):
@@ -97,7 +96,17 @@ class InfinoteEditor(object):
                 
                 
     def get_state(self):
-        return self._state.buffer.toString()
+        return (self._state.vector.toString(), self._state.buffer.toString()) 
+        
+    
+    def get_log(self, limit = None):
+        if limit != None:
+            if len(self.log) >=limit:
+                return (limit, self.log[-limit:])
+            else:
+                return (limit, self.log)
+        else:
+            return (limit, self.log)
                 
                 
 class BufferSpliceError(Exception):
@@ -851,7 +860,8 @@ class Vector(object):
                                 found = True
                                 self.users[index]['op'] = user_op['op']
                         if not found:
-                            self.users.append({'id':user_op['id'],'op':user_op['op']})
+                            self.users.append({'id':int(user_op['id']),'op':int(user_op['op'])})
+
                             
       
     def __repr__(self):
@@ -867,7 +877,7 @@ class Vector(object):
         @returns True if the callback function has never returned false; returns False otherwise.
         '''       
         for index, _user in enumerate(self.users):
-            if callback(_user['id'], _user['op'], index) == False:
+            if callback(int(_user['id']), int(_user['op']), index) == False:
                 return False   
         return True
 
@@ -907,10 +917,12 @@ class Vector(object):
         @param {Number} user Index of the component to be returned
         '''
         # != None
+        found = False
         for index, _user in enumerate(self.users):
-            if _user['id'] == user and _user['op'] != None:
+             if _user['id'] == user and _user['op'] != None:
+                found = True
                 return _user['op']
-        else:
+        if not found:
             return 0
 
     def causallyBefore(self, other):
@@ -956,10 +968,9 @@ class Vector(object):
         for index, _user in enumerate(result.users):
             if _user['id'] == user: 
                 found = True
-                result.users[index] = {'id':_user['id'],'op':result.get(user) + by}
+                result.users[index]['op'] = result.get(user) + by
         if not found:
-            result.users.append({'id':user,'op':result.get(user) + by})
-            
+            result.users.append({'id':user,'op':result.get(user) + by})            
         return result
         
 
@@ -1115,7 +1126,7 @@ class State(object):
                             #so we take the last resort: use the user ID of the
                             #requests to decide which request is to be
                             #transformed. This behavior is specified in the
-                            #Infinote protocol.                        
+                            #Infinote protocol.        
                             if r1.user < r2.user:
                                 cid = r1.operation
                             if r1.user > r2.user:

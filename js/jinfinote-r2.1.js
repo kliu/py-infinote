@@ -969,8 +969,9 @@ Vector.leastCommonSuccessor = function(v1, v2) {
         var val1 = v1.get(u);
         var val2 = v2.get(u);
         
-        if(val1 < val2)
+        if(val1 < val2) {
             result[u] = val2;
+        }
         //else
         //	result[u] = val1; // This is already the case since we copied v1
     });
@@ -1053,9 +1054,9 @@ State.prototype.translate = function(request, targetVector, noCache) {
         
         // The request's issuing user is left out since it is not possible
         // to transform or fold a request along its own user.
-        if(user == request.user)
+        if(user == request.user) {
             continue;
-        
+        }
         // We can only transform against requests that have been issued
         // between the translated request's vector and the target vector.
         if(targetVector.get(user) <= request.vector.get(user)) {
@@ -1193,6 +1194,7 @@ State.prototype.canExecute = function(request) {
 *  has been executed.
 */
 State.prototype.execute = function(request) {
+    console.log('execute');
     if(request == undefined)
     {
         // Pick an executable request from the queue.
@@ -1216,7 +1218,16 @@ State.prototype.execute = function(request) {
         return;
     }
     
-    request = request.copy();
+    //fix from simon, so history may work
+    if(request.vector.get(request.user) < this.vector.get(request.user)) {
+        console.log('happens!');
+     // FIXME: this assumes the received request is already reversible
+        this.log.push(request);
+        return;
+    }    
+    
+    request = request.copy(); 
+    
     
     if(request instanceof UndoRequest || request instanceof RedoRequest) {
         // For undo and redo requests, we change their vector to the vector
@@ -1297,10 +1308,13 @@ State.prototype.requestByUser = function(user, getIndex) {
     var userReqCount = 0;
     for(var reqIndex in this.log)
     {
+        
         if(this.log[reqIndex].user == user)
         {
-            if(userReqCount == getIndex)
+            if(userReqCount == getIndex) {
+                console.log(reqIndex);
                 return this.log[reqIndex];
+            }
             else
                 userReqCount += 1;
         }

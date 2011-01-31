@@ -61,7 +61,8 @@ def test_1():
     print 'Request 6: %s' % executed_r6.toString()
     print ' Vector 6: %s' % state.vector.toString() #this outputs 2:1
     print ' Result 6: %s\n' % state.buffer #this should output "abaccbcdefghi"
-    
+
+def test_2():
     state2 = State()
     logs = [['i', [1, '', 0, 'D']], ['i', [1, '1:1', 1, 'i']], ['i', [1, '1:2', 2, 't']], ['i', [1, '1:3', 3, ' ']], ['i', [1, '1:4', 4, 'i']], ['i', [1, '1:5', 5, 's']], ['i', [1, '1:6', 6, ' ']], ['i', [1, '1:7', 7, 'e']], 
             ['i', [1, '1:8', 8, 'e']], ['i', [1, '1:9', 9, 'n']], ['i', [1, '1:10', 10, ' ']], ['i', [1, '1:11', 11, 'te']], ['i', [1, '1:12', 13, 's']], ['i', [1, '1:13', 14, 't']]]
@@ -70,12 +71,18 @@ def test_1():
         buffer = Buffer([Segment(params[0], params[3])])
         operation = Insert(params[2], buffer)
         request = DoRequest(params[0], Vector(params[1]), operation)
-        executedRequest = state2.execute(request)
+        if state2.canExecute(request):
+            executedRequest = state2.execute(request)
+        else:
+            print 'Request failed to execute'
 
     def _handleDelete(params):     
         operation = Delete(params[2], params[3])
         request = DoRequest(params[0], Vector(params[1]), operation)
-        executedRequest = state2.execute(request)
+        if state2.canExecute(request):
+            executedRequest = state2.execute(request)
+        else:
+            print 'Request failed to execute'
 
     for log in logs:
         if log[0] == 'i':
@@ -87,5 +94,5 @@ def test_1():
         
 
     print ' Result 6: %s\n' % state2.buffer #this should output "dit is een test"
-    
 test_1()
+test_2()
